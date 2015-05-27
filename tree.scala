@@ -1,6 +1,7 @@
 class Rule(
     lhs: LogicTree,
-    rhs: LogicTree)
+    rhs: LogicTree,
+    visited: Boolean)
 {
     def getLeftValue(): Int = lhs.getValue()
 }
