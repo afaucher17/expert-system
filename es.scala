@@ -17,5 +17,3 @@ def not(A: Int, B: Int) : Int =
 {
     if (A == -1) then -1 else !A
 }
-
-
