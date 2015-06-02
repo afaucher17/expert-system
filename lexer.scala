@@ -1,6 +1,8 @@
 package lexer
 {
 
+  import parser.Parser
+
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
   }
@@ -78,10 +80,11 @@ package lexer
         {
           val lines = getFile(args(0))
           val lexer = new Lexer(lines)
-          try lexer.lex(lexer.split) catch {
+          val list = try lexer.lex(lexer.split) catch {
             case e: LexerException => println(e.getMessage)
           }
-          val parser = new Parser(lexer.lex(lexer.split))
+          val parser = new Parser(list)
+          parser.splitRule
         }
       }
     }

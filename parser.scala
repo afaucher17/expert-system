@@ -8,13 +8,17 @@ package parser
   {
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)\n".r
 
-    def splitRule(list: List[Token])
+    def splitRule()
     {
       /*var rule = new Rule()*/
       for (l <- list)
       {
-        val matches = imply.findAllIn(l.getData)
-        println(matches.group(3))
+        l match {
+          case imply(group) => {
+            println("--->  " + group(1))
+          }
+          case _ => println("non matching")
+        }
       }
     }
   }
