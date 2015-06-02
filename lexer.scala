@@ -49,7 +49,7 @@ package lexer
       if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Query, null) == null) throw new NoQueryException(Console.RED + "Error: No query." + Console.RESET)
       if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Query) > 1) throw new TooManyQueriesException(Console.RED + "Error: Too many queries." + Console.RESET)
       if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Fact, null) == null) throw new NoFactException(Console.RED + "Error: No fact definition." + Console.RESET)
-     if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Fact) > 1) throw new TooManyFactsException(Console.RED + "Error: Too many facts definition." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Fact) > 1) throw new TooManyFactsException(Console.RED + "Error: Too many facts definition." + Console.RESET)
       list
     }
   }
@@ -83,10 +83,15 @@ package lexer
         {
           val lines = getFile(args(0))
           val lexer = new Lexer(lines)
-          try lexer.lex(lexer.split) catch {
-            case e: LexerException => println(e.getMessage)
+          val list: (List[Token]) = try lexer.lex(lexer.split) catch {
+            case e: LexerException =>
+            {
+              println(e.getMessage)
+              System.exit(1)
+              null
+            }
           }
-          val parser = new Parser(lexer.lex(lexer.split))
+          val parser = new Parser(list)
         }
       }
     }
