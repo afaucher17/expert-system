@@ -2,8 +2,6 @@ package lexer
 {
   import parser.Parser
 
-  import parser.Parser
-
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
   }
