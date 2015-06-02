@@ -1,5 +1,6 @@
 package lexer
 {
+  import parser.Parser
 
   import parser.Parser
 
@@ -12,8 +13,10 @@ package lexer
     def getData() : String = data
   }
   class LexerException(msg: String) extends RuntimeException(msg)
-  class TooManyQueriesException(msg:String) extends LexerException(msg)
-  class TooManyFactsException(msg:String) extends LexerException(msg)
+  class TooManyQueriesException(msg: String) extends LexerException(msg)
+  class NoQueryException(msg: String) extends LexerException(msg)
+  class TooManyFactsException(msg: String) extends LexerException(msg)
+  class NoFactException(msg: String) extends LexerException(msg)
 
   class Lexer(lines: String)
   {
@@ -45,7 +48,9 @@ package lexer
           }
         }
       }
+      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Query, null) == null) throw new NoQueryException(Console.RED + "Error: No query." + Console.RESET)
       if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Query) > 1) throw new TooManyQueriesException(Console.RED + "Error: Too many queries." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Fact, null) == null) throw new NoFactException(Console.RED + "Error: No fact definition." + Console.RESET)
       if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Fact) > 1) throw new TooManyFactsException(Console.RED + "Error: Too many facts definition." + Console.RESET)
       list
     }
@@ -80,8 +85,13 @@ package lexer
         {
           val lines = getFile(args(0))
           val lexer = new Lexer(lines)
-          val list = try lexer.lex(lexer.split) catch {
-            case e: LexerException => println(e.getMessage)
+          val list: (List[Token]) = try lexer.lex(lexer.split) catch {
+            case e: LexerException =>
+            {
+              println(e.getMessage)
+              System.exit(1)
+              null
+            }
           }
           val parser = new Parser(list)
           parser.splitRule
