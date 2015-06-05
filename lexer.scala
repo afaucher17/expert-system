@@ -17,6 +17,7 @@ package lexer
   class NoQueryException(msg: String) extends LexerException(msg)
   class TooManyFactsException(msg: String) extends LexerException(msg)
   class NoFactException(msg: String) extends LexerException(msg)
+  class ParenthesesMismatchException(msg: String) extends LexerException(msg)
 
   class Lexer(lines: String)
   {
@@ -28,9 +29,29 @@ package lexer
 
     def split() : Array[String] =
     {
-      val cleanedFile = emptyline.replaceAllIn(comment.replaceAllIn(lines, ""), "")
+      var cleanedFile = emptyline.replaceAllIn(comment.replaceAllIn(lines, ""), "")
+      cleanedFile = cleanedFile.replaceAll("([\t \r]*)", "")
+      println(cleanedFile)
       val split = cleanedFile.split("\n")
       split
+    }
+
+    def checkParentheses(line: String) =
+    {
+      var count = 0
+      for (c <- line)
+      {
+        c match
+        {
+          case '(' => count += 1
+          case ')' => count -= 1
+          case _ => ""
+        }
+        if (count < 0)
+          throw new ParenthesesMismatchException(Console.RED + "Error: Parentheses mismatch" + Console.RESET)
+      }
+      if (count != 0)
+          throw new ParenthesesMismatchException(Console.RED + "Error: Parentheses mismatch" + Console.RESET)
     }
 
     def lex(split: Array[String]): List[Token] =
@@ -38,6 +59,7 @@ package lexer
       var list = List[Token]()
       for (ln <- split)
       {
+        checkParentheses(ln)
         ln match {
           case query() => list = new Token(TokenType.Query, ln)::list
           case fact() => list = new Token(TokenType.Fact, ln)::list
@@ -48,10 +70,14 @@ package lexer
           }
         }
       }
-      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Query, null) == null) throw new NoQueryException(Console.RED + "Error: No query." + Console.RESET)
-      if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Query) > 1) throw new TooManyQueriesException(Console.RED + "Error: Too many queries." + Console.RESET)
-      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Fact, null) == null) throw new NoFactException(Console.RED + "Error: No fact definition." + Console.RESET)
-      if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Fact) > 1) throw new TooManyFactsException(Console.RED + "Error: Too many facts definition." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Query, null) == null)
+        throw new NoQueryException(Console.RED + "Error: No query." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Query) > 1)
+        throw new TooManyQueriesException(Console.RED + "Error: Too many queries." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size).getOrElse(TokenType.Fact, null) == null)
+        throw new NoFactException(Console.RED + "Error: No fact definition." + Console.RESET)
+      if (list.groupBy(_.ttype).mapValues(_.size)(TokenType.Fact) > 1)
+        throw new TooManyFactsException(Console.RED + "Error: Too many facts definition." + Console.RESET)
       list
     }
   }

@@ -11,34 +11,61 @@ package parser
   class Parser(list: List[Token])
   {
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
-    val operators: Map[Any, (Boolean, Boolean) => Boolean] = Map('+' -> {(A: Boolean, B: Boolean) => (A && B)}, '|' -> {(A: Boolean, B: Boolean) => (A || B)}, '^' -> {(A: Boolean, B: Boolean) => (A ^ B)}, '!' -> {(A: Boolean, B: Boolean) => (!A)})
+    val parentheses = "^(\\()(.*)(\\))$".r
+    val operators: Map[Char, (Boolean, Boolean) => Boolean] =
+      Map('+' -> {(A: Boolean, B: Boolean) => (A && B)},
+      '|' -> {(A: Boolean, B: Boolean) => (A || B)},
+      '^' -> {(A: Boolean, B: Boolean) => (A ^ B)},
+      '!' -> {(A: Boolean, B: Boolean) => (!A)})
 
     var rules = List[Rule]()
     var datalist = List[Data]()
 
-    def createTree(line: String) : LogicTree =
+    def trimParentheses(line: String) : String =
+    {
+      if (parentheses.findFirstIn(line).isEmpty)
+        line
+      else
+      {
+        val ret = parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
+        trimParentheses(ret)
+      }
+    }
+
+    def createTree(oline: String) : LogicTree =
     {
       var pos: Array[Int] = Array(-1, '?')
       var i = 0
+      var ignore = 0
+
+      val line = trimParentheses(oline)
       for (c <- line)
       {
         c match {
+          case '(' => ignore += 1
+          case ')' => ignore -= 1
           case ('+' | '|' | '^' | '!') =>
           {
-            if (checkPriority(c, pos(1)))
+            if (ignore == 0 && checkPriority(c, pos(1).asInstanceOf[Char]))
               pos = Array(i, c)
           }
+          case _ => ""
         }
         i += 1
       }
       val ret: LogicTree = pos(1) match {
         case '!' =>
         {
-          new Node(null, createTree(line.slice(pos(0) + 1, line.length)), operators(pos(1)))
+          new Node(null, createTree(line.slice(pos(0) + 1, line.length)),
+            pos(1).asInstanceOf[Char],
+            operators(pos(1).asInstanceOf[Char]))
         }
         case ('+' | '|' | '^') =>
         {
-          new Node(createTree(line.slice(0, pos(0) - 1)), createTree(line.slice(pos(0) + 1, line.length)), operators(pos(1)))
+          new Node(createTree(line.slice(0, pos(0))),
+            createTree(line.slice(pos(0) + 1, line.length)),
+            pos(1).asInstanceOf[Char],
+            operators(pos(1).asInstanceOf[Char]))
         }
         case '?' =>
         {
@@ -50,22 +77,36 @@ package parser
       ret
     }
 
-    def checkPriority(current: Char, save: Int) : Boolean =
+    def checkPriority(current: Char, save: Char) : Boolean =
     {
-      val priority: Map[Any, Int] = Map('!' -> 0, '+' -> 1, '|' -> 2, '^' -> 3, '?' -> 9001)
+      val priority: Map[Char, Int] = Map('^' -> 0, '|' -> 1,
+        '+' -> 2, '!' -> 3, '?' -> 9001)
+
       (priority(current) <= priority(save))
     }
 
     def splitRule()
     {
-      /*var rule = new Rule()*/
      for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
      {
-       val matches = imply.findAllMatchIn(l.getData)
-       matches.foreach {
-         m => println(createTree(m.group(1)))
+       println(Console.CYAN + l.getData + Console.RESET)
+       val m = imply.findFirstMatchIn(l.getData)
+       val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")), createTree(m.map(_.group(3)).getOrElse("")), l.getData, false)
+       if (m.map(_.group(2)).getOrElse("") == "<=>")
+       {
+          val rule2 = new Rule(createTree(m.map(_.group(3)).getOrElse("")), createTree(m.map(_.group(1)).getOrElse("")), l.getData, false)
+          rules = rule2::rules
        }
+       rules = rule::rules
      }
+      for (rule <- rules)
+      {
+        val dl = rule.getDataList().groupBy(_.getName).map(_._2.head)
+        for (data <- dl)
+          data.setRules(rule::data.getRules())
+      }
+      for (dtt <- datalist)
+        println(dtt.getName() + " =================> " + dtt.getRules())
     }
 
     def splitQuery()
@@ -78,7 +119,9 @@ package parser
 
     def splitFact()
     {
-      val fact = list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
+      val fact =
+        list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
+
       for (ln <- fact)
       {
         ln match {
