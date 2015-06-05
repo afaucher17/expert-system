@@ -92,7 +92,7 @@ package lexer
             }
           }
           val parser = new Parser(list)
-          parser.splitRule
+          parser.parse
         }
       }
     }

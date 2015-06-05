@@ -6,31 +6,35 @@ package tree
     rhs: LogicTree,
     visited: Boolean)
     {
-      def getLeftValue(): Int = lhs.getValue()
+      def getLeftValue(): Boolean = lhs.getValue()
     }
 
     trait LogicTree {
-      def getValue(): Int
+      def getValue(): Boolean
     }
 
     class Node(
       lhs: LogicTree,
       rhs: LogicTree,
-      op: (Int, Int) => Int) extends LogicTree
+      op: (Boolean, Boolean) => Boolean) extends LogicTree
       {
-        def getValue(): Int = op(lhs.getValue(), rhs.getValue())
+        def getValue(): Boolean = op(lhs.getValue(), rhs.getValue())
       }
 
       class Leaf(data: Data) extends LogicTree
       {
-        def getValue(): Int = data.getValue()
+        def getValue(): Boolean = data.getValue()
       }
 
       class Data(
         rules: List[Rule],
-        value: Boolean)
+        value: Boolean,
+        name: Char)
         {
-          def getValue(): Int = 1 /*change this BS*/
+          def this(value: Boolean, name: Char) = this(List[Rule](), value, name)
+          def getValue(): Boolean = value
+          def getName(): Char = name
+          override def toString(): String = "(Data " + name + ": " + value + ")"
         }
 
 }
