@@ -8,7 +8,7 @@ package tree
     visited: Boolean)
     {
       def getLeftValue(): Boolean = lhs.getValue()
-      def getDataList(): List[Data] = lhs.getDataList():::rhs.getDataList()
+      def getDataList(): List[Data] = rhs.getDataList()
       override def toString(): String = Console.YELLOW + "(Rule (" + line + ") :" + lhs + " " + rhs + ")" + Console.RESET
     }
 
