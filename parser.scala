@@ -12,11 +12,11 @@ package parser
   {
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
-    val operators: Map[Char, (Boolean, Boolean) => Boolean] =
-      Map('+' -> {(A: Boolean, B: Boolean) => (A && B)},
-      '|' -> {(A: Boolean, B: Boolean) => (A || B)},
-      '^' -> {(A: Boolean, B: Boolean) => (A ^ B)},
-      '!' -> {(A: Boolean, B: Boolean) => (!A)})
+    val operators: Map[Char, (Int, Int) => Int] =
+      Map('+' -> {(A: Int, B: Int) => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A && B)},
+        '|' -> {(A: Int, B: Int) => if (A + B <= -1) -1 else (A || B)},
+        '^' -> {(A: Int, B: Int) => if (A == -1 || B == -1) -1 else (A ^ B)},
+        '!' -> {(A: Int, B: Int) => if (A == -1) -1 else (!A)})
 
     var rules = List[Rule]()
     var datalist = List[Data]()
@@ -43,7 +43,7 @@ package parser
       {
         c match {
           case '(' => ignore += 1
-          case ')' => ignore -= 1
+            case ')' => ignore -= 1
           case ('+' | '|' | '^' | '!') =>
           {
             if (ignore == 0 && checkPriority(c, pos(1).asInstanceOf[Char]))
@@ -70,7 +70,13 @@ package parser
         case '?' =>
         {
           val li = datalist.filter(x => x.getName() == line(0))
-          val data = if (li.isEmpty) new Data(false, line(0)) else li(0)
+          val data = if (li.isEmpty)
+          {
+            val data = new Data(false, line(0))
+            datalist = data::datalist
+            data
+          }
+          else li(0)
           new Leaf(data)
         }
       }
@@ -87,18 +93,18 @@ package parser
 
     def splitRule()
     {
-     for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
-     {
-       println(Console.CYAN + l.getData + Console.RESET)
-       val m = imply.findFirstMatchIn(l.getData)
-       val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")), createTree(m.map(_.group(3)).getOrElse("")), l.getData, false)
-       if (m.map(_.group(2)).getOrElse("") == "<=>")
-       {
+      for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
+      {
+        println(Console.CYAN + l.getData + Console.RESET)
+        val m = imply.findFirstMatchIn(l.getData)
+        val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")), createTree(m.map(_.group(3)).getOrElse("")), l.getData, false)
+        if (m.map(_.group(2)).getOrElse("") == "<=>")
+        {
           val rule2 = new Rule(createTree(m.map(_.group(3)).getOrElse("")), createTree(m.map(_.group(1)).getOrElse("")), l.getData, false)
           rules = rule2::rules
-       }
-       rules = rule::rules
-     }
+        }
+        rules = rule::rules
+      }
       for (rule <- rules)
       {
         val dl = rule.getDataList().groupBy(_.getName).map(_._2.head)
@@ -111,9 +117,23 @@ package parser
 
     def splitQuery()
     {
-      for (l <- list.filter(x => x.getTokenType() == TokenType.Query))
-      {
 
+      val qry = list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
+
+      for (c <- qry)
+      {
+        c match {
+          case ('?' | ' ' | '\t' | '\n' | '\r') => ""
+          case _ =>
+          {
+            if (!datalist.exists(x => x.getName() == c))
+              println("No symbol " + c + " in the database.")
+            else
+            {
+              if (list.filter(x =>
+            }
+          }
+        }
       }
     }
 
