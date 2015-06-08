@@ -2,8 +2,6 @@ package lexer
 {
   import parser.Parser
 
-  import parser.Parser
-
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
   }
@@ -31,7 +29,7 @@ package lexer
     {
       var cleanedFile = emptyline.replaceAllIn(comment.replaceAllIn(lines, ""), "")
       cleanedFile = cleanedFile.replaceAll("([\t \r]*)", "")
-      println(cleanedFile)
+      // println(cleanedFile)
       val split = cleanedFile.split("\n")
       split
     }

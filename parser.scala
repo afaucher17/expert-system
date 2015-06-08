@@ -4,6 +4,7 @@ package parser
   import tree.Data
   import tree.Node
   import tree.Leaf
+  import tree.RuleType
   import tree.LogicTree
   import lexer.Token
   import lexer.TokenType
@@ -13,10 +14,14 @@ package parser
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
     val operators: Map[Char, (Int, Int) => Int] =
-      Map('+' -> {(A: Int, B: Int) => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A && B)},
-        '|' -> {(A: Int, B: Int) => if (A + B <= -1) -1 else (A || B)},
-        '^' -> {(A: Int, B: Int) => if (A == -1 || B == -1) -1 else (A ^ B)},
-        '!' -> {(A: Int, B: Int) => if (A == -1) -1 else (!A)})
+      Map('+' -> {(A: Int, B: Int)
+      => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A & B)},
+      '|' -> {(A: Int, B: Int)
+      => if (A + B <= -1) -1 else (A | B)},
+      '^' -> {(A: Int, B: Int)
+      => if (A == -1 || B == -1) -1 else (A ^ B)},
+      '!' -> {(A: Int, B: Int)
+      => if (A == -1) -1 else (~A)})
 
     var rules = List[Rule]()
     var datalist = List[Data]()
@@ -27,33 +32,15 @@ package parser
         line
       else
       {
-        val ret = parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
+        val ret =
+          parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
         trimParentheses(ret)
       }
     }
 
-    def createTree(oline: String) : LogicTree =
+    def addLogicTree(pos: Array[Int], line: String) : LogicTree =
     {
-      var pos: Array[Int] = Array(-1, '?')
-      var i = 0
-      var ignore = 0
-
-      val line = trimParentheses(oline)
-      for (c <- line)
-      {
-        c match {
-          case '(' => ignore += 1
-            case ')' => ignore -= 1
-          case ('+' | '|' | '^' | '!') =>
-          {
-            if (ignore == 0 && checkPriority(c, pos(1).asInstanceOf[Char]))
-              pos = Array(i, c)
-          }
-          case _ => ""
-        }
-        i += 1
-      }
-      val ret: LogicTree = pos(1) match {
+      pos(1) match {
         case '!' =>
         {
           new Node(null, createTree(line.slice(pos(0) + 1, line.length)),
@@ -80,7 +67,30 @@ package parser
           new Leaf(data)
         }
       }
-      ret
+    }
+
+    def createTree(oline: String) : LogicTree =
+    {
+      var pos: Array[Int] = Array(-1, '?')
+      var i = 0
+      var ignore = 0
+
+      val line = trimParentheses(oline)
+      for (c <- line)
+      {
+        c match {
+          case '(' => ignore += 1
+            case ')' => ignore -= 1
+          case ('+' | '|' | '^' | '!') =>
+          {
+            if (ignore == 0 && checkPriority(c, pos(1).asInstanceOf[Char]))
+              pos = Array(i, c)
+          }
+          case _ => ""
+        }
+        i += 1
+      }
+      addLogicTree(pos, line)
     }
 
     def checkPriority(current: Char, save: Char) : Boolean =
@@ -95,14 +105,11 @@ package parser
     {
       for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
       {
-        println(Console.CYAN + l.getData + Console.RESET)
+        // println(Console.CYAN + l.getData + Console.RESET)
         val m = imply.findFirstMatchIn(l.getData)
-        val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")), createTree(m.map(_.group(3)).getOrElse("")), l.getData, false)
-        if (m.map(_.group(2)).getOrElse("") == "<=>")
-        {
-          val rule2 = new Rule(createTree(m.map(_.group(3)).getOrElse("")), createTree(m.map(_.group(1)).getOrElse("")), l.getData, false)
-          rules = rule2::rules
-        }
+        val ruletype = if (m.map(_.group(2)) == "=>") RuleType.Implication else RuleType.IfAndOnlyIf
+        val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")),
+          createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, false)
         rules = rule::rules
       }
       for (rule <- rules)
@@ -111,14 +118,14 @@ package parser
         for (data <- dl)
           data.setRules(rule::data.getRules())
       }
-      for (dtt <- datalist)
-        println(dtt.getName() + " =================> " + dtt.getRules())
+      /* for (dtt <- datalist)
+      println(dtt.getName() + " =================> " + dtt.getRules()) */
     }
 
     def splitQuery()
     {
-
-      val qry = list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
+      val qry =
+        list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
 
       for (c <- qry)
       {
@@ -130,7 +137,7 @@ package parser
               println("No symbol " + c + " in the database.")
             else
             {
-              if (list.filter(x =>
+              println("Value " + c + ": " + datalist.filter(x => x.getName() == c)(0).getValue())
             }
           }
         }
