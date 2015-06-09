@@ -6,6 +6,7 @@ package parser
   import tree.Leaf
   import tree.RuleType
   import tree.LogicTree
+  import tree.ContradictoryRuleException
   import lexer.Token
   import lexer.TokenType
 
@@ -21,7 +22,7 @@ package parser
       '^' -> {(A: Int, B: Int)
       => if (A == -1 || B == -1) -1 else (A ^ B)},
       '!' -> {(A: Int, B: Int)
-      => if (A == -1) -1 else (~A)})
+      => if (B == -1) -1 else (1 ^ B)})
 
     var rules = List[Rule]()
     var datalist = List[Data]()
@@ -59,7 +60,7 @@ package parser
           val li = datalist.filter(x => x.getName() == line(0))
           val data = if (li.isEmpty)
           {
-            val data = new Data(false, line(0))
+            val data = new Data(-1, line(0), false)
             datalist = data::datalist
             data
           }
@@ -122,6 +123,16 @@ package parser
       println(dtt.getName() + " =================> " + dtt.getRules()) */
     }
 
+    def printValue(value: Int, name: Char)
+    {
+      println(Console.GREEN + "Value " + name + ": " + (value match
+      {
+        case 0 => "False"
+        case 1 => "True"
+        case -1 => "Undetermined"
+      }) + "." + Console.RESET)
+    }
+
     def splitQuery()
     {
       val qry =
@@ -134,10 +145,21 @@ package parser
           case _ =>
           {
             if (!datalist.exists(x => x.getName() == c))
-              println("No symbol " + c + " in the database.")
+              printValue(0, c)
             else
             {
-              println("Value " + c + ": " + datalist.filter(x => x.getName() == c)(0).getValue())
+              try
+              {
+                printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
+              }
+              catch
+              {
+                case e: ContradictoryRuleException =>
+                {
+                  println(e.getMessage)
+                  System.exit(1)
+                }
+              }
             }
           }
         }
@@ -156,13 +178,12 @@ package parser
           case _ => {
             if (!datalist.exists(x => x.getName() == ln))
             {
-              val data = new Data(true, ln)
+              val data = new Data(1, ln, false)
               datalist = data::datalist
             }
           }
         }
       }
-      println(datalist)
     }
 
 

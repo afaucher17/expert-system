@@ -21,22 +21,22 @@ package tree
         var res = -1
         if (!visited)
         {
-          println(line)
           visited = true
           if (getLeftValue() == 1)
           {
-            println("????")
-            data.setInitialValue(false)
+            data.setVisited(true)
+            data.setInitialValue(0)
             var ret1 = rhs.getValue()
             ret1 = if (ret1 == -1) 1 else ret1
-            data.setInitialValue(true)
+            data.setInitialValue(1)
             var ret2 = rhs.getValue()
-            ret2 = if (ret1 == -1) 1 else ret2
-            println(ret1 + " et " + ret2)
+            ret2 = if (ret2 == -1) 1 else ret2
             res = (ret1 + ret2) match
             {
               case 2 => -1
-              case 0 => throw new ContradictoryRuleException("Error: " + line + " is contradictory")
+              case 0 => throw new ContradictoryRuleException(Console.RED +
+                "Error: Rule " + Console.RESET + "< " + line + " >" +
+                Console.RED + " is contradictory" + Console.RESET)
               case 1 => if (ret1 == 1) 0 else 1
             }
           }
@@ -45,7 +45,8 @@ package tree
         res
       }
       def getDataList(): List[Data] = rhs.getDataList()
-      override def toString(): String = Console.YELLOW + "(Rule (" + line + ") : " + lhs + " " + rhs + ")" + Console.RESET
+      override def toString(): String = Console.YELLOW + "(Rule (" + line +
+      ") : " + lhs + " " + rhs + ")" + Console.RESET
     }
 
     trait LogicTree {
@@ -66,7 +67,6 @@ package tree
             case null => op(1, rhs.getValue())
             case _ => op(lhs.getValue(), rhs.getValue())
           }
-          println("wewgwegewg: " + value)
           value
         }
         def getDataList(): List[Data] =
@@ -76,7 +76,9 @@ package tree
           else
             lhs.getDataList():::rhs.getDataList()
         }
-        override def toString(): String = Console.BLUE + "(Tree " + Console.RED + opname + Console.BLUE + ": " + lhs + " % " + rhs + ")" + Console.RESET
+        override def toString(): String = Console.BLUE + "(Tree " +
+        Console.RED + opname + Console.BLUE +
+        ": " + lhs + " % " + rhs + ")" + Console.RESET
       }
 
       class Leaf(data: Data) extends LogicTree
@@ -84,55 +86,56 @@ package tree
         def getValue(): Int =
           data.getValue()
         def getDataList(): List[Data] = data::Nil
-        override def toString(): String = Console.GREEN + "(Leaf " + Console.CYAN + data.getName() + Console.GREEN + ": " + data.getValue() + ")" + Console.RESET
+        override def toString(): String = Console.GREEN + "(Leaf " +
+        Console.CYAN + data.getName() + Console.GREEN +
+        ": " + data.getValue() + ")" + Console.RESET
       }
 
       class Data(
         var rules: List[Rule],
-        var value: Boolean,
-        name: Char)
+        var value: Int,
+        name: Char,
+        var visited: Boolean)
         {
-          def this(value: Boolean, name: Char) = this(List[Rule](), value, name)
-          def setInitialValue(vl: Boolean) = this.value = vl
-          def getInitialValue(): Boolean = value
+          def this(value: Int, name: Char, visited: Boolean) = this(List[Rule](), value, name, visited)
+          def setInitialValue(vl: Int) = this.value = vl
+          def setVisited(vl: Boolean) = this.visited = vl
           def getValue(): Int =
           {
-            println("Hello my name is " + name)
-            var ret : Int = if (value) 1 else -1
-            if (ret == -1 & rules.isEmpty)
+          //  println("Hello my name is " + name + " I have value: " + value)
+            var ret : Int = value
+
+            if ((ret == -1) && (rules.isEmpty))
               ret = 0
-            else
+            else if (!visited)
             {
               for (rule <- rules)
               {
-                ret = rule.getValue(this) match
+                val nret = rule.getValue(this)
+                ret = nret match
                 {
                   case -1 => ret
-                  case 0 =>
-                    if (ret == 1)
+                  case (0 | 1) =>
+                    if ((ret != -1) && (ret != nret))
                     {
-                      throw new ContradictoryRuleException(Console.RED + "Error: Contradiction in the rules." + Console.RESET)
+                      throw new ContradictoryRuleException(Console.RED +
+                        "Error: Contradiction found in the ruleset when resolving the value of " +
+                        name + "." + Console.RESET)
                       -2
                     }
-                    else 0
-                  case 1 =>
-                    if (ret == 0)
-                    {
-                      throw new ContradictoryRuleException(Console.RED + "Error: Contradiction in the rules." + Console.RESET)
-                      -2
-                    }
-                    else 1
+                    else
+                     nret
                 }
               }
             }
-            println(name + " Value found : " + ret)
+            value = ret
             ret
           }
           def getName(): Char = name
           def setRules(vlu: List[Rule]) = rules = vlu
           def getRules() : List[Rule] = rules
-          override def toString(): String = "(Data "
-          + name + ": " + value + ")"
+          override def toString(): String = "(Data " +
+          name + ": " + value + ")"
         }
 
 }
