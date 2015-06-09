@@ -108,7 +108,7 @@ package parser
       {
         // println(Console.CYAN + l.getData + Console.RESET)
         val m = imply.findFirstMatchIn(l.getData)
-        val ruletype = if (m.map(_.group(2)) == "=>") RuleType.Implication else RuleType.IfAndOnlyIf
+        val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication else RuleType.IfAndOnlyIf
         val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")),
           createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, false)
         rules = rule::rules

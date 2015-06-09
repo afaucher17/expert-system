@@ -16,28 +16,49 @@ package tree
     var visited: Boolean)
     {
       def getLeftValue(): Int = lhs.getValue()
+      def getLine(): String = line
       def getValue(data: Data): Int =
       {
         var res = -1
         if (!visited)
         {
           visited = true
-          if (getLeftValue() == 1)
+          val lvalue: Int = getLeftValue()
+          if (((lvalue == 1) && (ruletype == RuleType.Implication)) ||
+            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
           {
             data.setVisited(true)
+            val base = data.getInitialValue()
             data.setInitialValue(0)
-            var ret1 = rhs.getValue()
-            ret1 = if (ret1 == -1) 1 else ret1
+            var ret1 = try rhs.getValue() catch
+            {
+              case e: ContradictoryRuleException => ()
+              lvalue ^ 1
+            }
+            ret1 = if (ret1 == -1) lvalue else ret1
             data.setInitialValue(1)
-            var ret2 = rhs.getValue()
-            ret2 = if (ret2 == -1) 1 else ret2
+            var ret2 = try rhs.getValue() catch
+            {
+              case e: ContradictoryRuleException => ()
+              lvalue ^ 1
+            }
+            data.setInitialValue(base)
+            data.setVisited(false)
+            ret2 = if (ret2 == -1) lvalue else ret2
+            val test1: Int = lvalue + lvalue
+            val test2: Int = (lvalue ^ 1) + (lvalue ^ 1)
+            // println("rule: " + line + " looking for " + data.getName() + " " + ret1 + " and " + ret2)
             res = (ret1 + ret2) match
             {
-              case 2 => -1
-              case 0 => throw new ContradictoryRuleException(Console.RED +
+              case (`test1`) => -1
+              case (`test2`) =>
+              {
+                visited = false
+                throw new ContradictoryRuleException(Console.RED +
                 "Error: Rule " + Console.RESET + "< " + line + " >" +
                 Console.RED + " is contradictory" + Console.RESET)
-              case 1 => if (ret1 == 1) 0 else 1
+              }
+              case 1 => if (ret1 == lvalue) 0 else 1
             }
           }
           visited = false
@@ -99,10 +120,10 @@ package tree
         {
           def this(value: Int, name: Char, visited: Boolean) = this(List[Rule](), value, name, visited)
           def setInitialValue(vl: Int) = this.value = vl
+          def getInitialValue(): Int = this.value
           def setVisited(vl: Boolean) = this.visited = vl
           def getValue(): Int =
           {
-          //  println("Hello my name is " + name + " I have value: " + value)
             var ret : Int = value
 
             if ((ret == -1) && (rules.isEmpty))
@@ -116,6 +137,7 @@ package tree
                 {
                   case -1 => ret
                   case (0 | 1) =>
+                  {
                     if ((ret != -1) && (ret != nret))
                     {
                       throw new ContradictoryRuleException(Console.RED +
@@ -125,10 +147,10 @@ package tree
                     }
                     else
                      nret
+                  }
                 }
               }
             }
-            value = ret
             ret
           }
           def getName(): Char = name
