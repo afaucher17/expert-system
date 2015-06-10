@@ -1,19 +1,25 @@
 package parser
 {
   import tree.Rule
-  import tree.Data
   import tree.Node
   import tree.Leaf
   import tree.RuleType
   import tree.LogicTree
   import tree.ContradictoryRuleException
+  import data.Data
   import lexer.Token
   import lexer.TokenType
 
+  /**
+   * Parser class, used for parsing operations
+   **/
   class Parser(list: List[Token])
   {
+    // The regex used in the parser
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
+
+    // Operators functions for the rule tree
     val operators: Map[Char, (Int, Int) => Int] =
       Map('+' -> {(A: Int, B: Int)
       => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A & B)},
@@ -24,10 +30,12 @@ package parser
       '!' -> {(A: Int, B: Int)
       => if (B == -1) -1 else (1 ^ B)})
 
+    // The rule list and the data list
     var rules = List[Rule]()
     var datalist = List[Data]()
 
-    def trimParentheses(line: String) : String =
+    // Remove the parentheses if they are encapsulating the whole expression
+    private def _trimParentheses(line: String) : String =
     {
       if (parentheses.findFirstIn(line).isEmpty)
         line
@@ -35,23 +43,24 @@ package parser
       {
         val ret =
           parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
-        trimParentheses(ret)
+        _trimParentheses(ret)
       }
     }
 
-    def addLogicTree(pos: Array[Int], line: String) : LogicTree =
+    // Creates a LogicTree (either a Node or a Leaf)
+    private def _addLogicTree(pos: Array[Int], line: String) : LogicTree =
     {
       pos(1) match {
         case '!' =>
         {
-          new Node(null, createTree(line.slice(pos(0) + 1, line.length)),
+          new Node(null, _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
             operators(pos(1).asInstanceOf[Char]))
         }
         case ('+' | '|' | '^') =>
         {
-          new Node(createTree(line.slice(0, pos(0))),
-            createTree(line.slice(pos(0) + 1, line.length)),
+          new Node(_createTree(line.slice(0, pos(0))),
+            _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
             operators(pos(1).asInstanceOf[Char]))
         }
@@ -70,13 +79,13 @@ package parser
       }
     }
 
-    def createTree(oline: String) : LogicTree =
+    private def _createTree(oline: String) : LogicTree =
     {
       var pos: Array[Int] = Array(-1, '?')
       var i = 0
       var ignore = 0
 
-      val line = trimParentheses(oline)
+      val line = _trimParentheses(oline)
       for (c <- line)
       {
         c match {
@@ -84,17 +93,18 @@ package parser
             case ')' => ignore -= 1
           case ('+' | '|' | '^' | '!') =>
           {
-            if (ignore == 0 && checkPriority(c, pos(1).asInstanceOf[Char]))
+            if (ignore == 0 && _checkPriority(c, pos(1).asInstanceOf[Char]))
               pos = Array(i, c)
           }
           case _ => ""
         }
         i += 1
       }
-      addLogicTree(pos, line)
+      _addLogicTree(pos, line)
     }
 
-    def checkPriority(current: Char, save: Char) : Boolean =
+    // Checks the priority of the operators in order to create the tree in the right order.
+    private def _checkPriority(current: Char, save: Char) : Boolean =
     {
       val priority: Map[Char, Int] = Map('^' -> 0, '|' -> 1,
         '+' -> 2, '!' -> 3, '?' -> 9001)
@@ -102,15 +112,16 @@ package parser
       (priority(current) <= priority(save))
     }
 
-    def splitRule()
+    // Splits the rules and creates a Rule instance for each of them
+    private def _splitRule()
     {
       for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
       {
         // println(Console.CYAN + l.getData + Console.RESET)
         val m = imply.findFirstMatchIn(l.getData)
-        val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication else RuleType.IfAndOnlyIf
-        val rule = new Rule(createTree(m.map(_.group(1)).getOrElse("")),
-          createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, Nil)
+        val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication   else RuleType.IfAndOnlyIf
+        val rule = new Rule(_createTree(m.map(_.group(1)).getOrElse("")),
+          _createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, Nil)
         rules = rule::rules
       }
       for (rule <- rules)
@@ -119,11 +130,10 @@ package parser
         for (data <- dl)
           data.setRules(rule::data.getRules())
       }
-      /* for (dtt <- datalist)
-      println(dtt.getName() + " =================> " + dtt.getRules()) */
     }
 
-    def printValue(value: Int, name: Char)
+    // Prints the value of the queried variable
+    private def _printValue(value: Int, name: Char)
     {
       println(Console.GREEN + "Value " + name + ": " + (value match
       {
@@ -133,7 +143,8 @@ package parser
       }) + "." + Console.RESET)
     }
 
-    def splitQuery()
+    // Split the query to get the value of each variable
+    private def _splitQuery()
     {
       val qry =
         list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
@@ -145,13 +156,11 @@ package parser
           case _ =>
           {
             if (!datalist.exists(x => x.getName() == c))
-              printValue(0, c)
+              _printValue(0, c)
             else
             {
               try
-              {
-                printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
-              }
+              _printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
               catch
               {
                 case e: ContradictoryRuleException =>
@@ -166,7 +175,8 @@ package parser
       }
     }
 
-    def splitFact()
+    // Split the facts to get the initial value of each variable
+    private def _splitFact()
     {
       val fact =
         list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
@@ -186,12 +196,12 @@ package parser
       }
     }
 
-
+    // The main parser action
     def parse()
     {
-      splitFact()
-      splitRule()
-      splitQuery()
+      _splitFact()
+      _splitRule()
+      _splitQuery()
     }
   }
 }

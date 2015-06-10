@@ -1,5 +1,7 @@
 package tree
 {
+  import data.Data
+
   class ContradictoryRuleException(msg: String) extends RuntimeException(msg)
 
   object RuleType extends Enumeration {
@@ -7,7 +9,9 @@ package tree
     val IfAndOnlyIf, Implication = Value
   }
 
-
+  /**
+   * The class Rule describe a rule in the file. Lhs is the antecedent and rhs is the consequent. The ruletype defines the type of the rule (Implication or IfAndOnlyIf). The line is the rule in string form. Visitors prevents the program from looping infinitely by allowing a data to check its rule only once.
+   **/
   class Rule(
     lhs: LogicTree,
     rhs: LogicTree,
@@ -18,6 +22,11 @@ package tree
       def getLeftValue(): Int = lhs.getValue()
       def getLine(): String = line
 
+      /**
+       * Find the right value of the data according to the return values of the consequent.
+       * If none of the values found are right, a ContradictoryRuleException is thrown.
+       * If no conclusion can be reached, the value returned is -1
+       **/
       private def _solver(data: Data, lvalue: Int, ret1: Int, ret2: Int): Int =
       {
         val test1: Int = lvalue + lvalue
@@ -37,22 +46,38 @@ package tree
         res
       }
 
+      /**
+       * Tests each possible value for the current variable (0 or 1) and checks
+       * the resulting value of the consequent.
+       **/
       private def _testVariable(data: Data, lvalue: Int): Int =
       {
+        // We set the visited boolean at true to prevent the data from checking itself
+        // while we make an hypothesis.
         data.setVisited(true)
+        // Saving the initial value to prevent data loss
         val base = data.getInitialValue()
         data.setInitialValue(0)
-        var ret1 = try rhs.getValue() catch { case e: ContradictoryRuleException => lvalue ^ 1}
+        // If an exception if thrown while checking the value of the consequent
+        // it is not an error, but we have to assume ret1 is not the value
+        // we are expecting (lvalue) but its contrary (lvalue ^ 1)
+        var ret1 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
+        lvalue ^ 1}
         ret1 = if (ret1 == -1) lvalue else ret1
         data.setInitialValue(1)
-        var ret2 = try rhs.getValue() catch { case e: ContradictoryRuleException => lvalue ^ 1 }
+        var ret2 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
+        lvalue ^ 1 }
         data.setInitialValue(base)
+        // The hypothesis done, we set the visited boolean at false.
         data.setVisited(false)
         ret2 = if (ret2 == -1) lvalue else ret2
         val res = _solver(data, lvalue, ret1, ret2)
         res
       }
 
+      /**
+       * Get the value of a given data according to the rule.
+       **/
       def getValue(data: Data): Int =
       {
         var res = -1
@@ -63,7 +88,7 @@ package tree
           lazy val lvalue: Int = getLeftValue()
           if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
             ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
-              res = _testVariable(data, lvalue)
+          res = _testVariable(data, lvalue)
           visitors = visitors.filter(x => x.getName() != data.getName())
         }
         res
@@ -116,55 +141,4 @@ package tree
         Console.CYAN + data.getName() + Console.GREEN +
         ": " + data.getValue() + ")" + Console.RESET
       }
-
-      class Data(
-        var rules: List[Rule],
-        var value: Int,
-        name: Char,
-        var visited: Boolean)
-        {
-          def this(value: Int, name: Char, visited: Boolean) = this(List[Rule](), value, name, visited)
-          def setInitialValue(vl: Int) = this.value = vl
-          def getInitialValue(): Int = this.value
-          def setVisited(vl: Boolean) = this.visited = vl
-          def getValue(): Int =
-          {
-            var ret : Int = value
-
-            if ((ret == -1) && (rules.isEmpty))
-              ret = 0
-            else if (!visited)
-            {
-              for (rule <- rules)
-              {
-                val nret = rule.getValue(this)
-                ret = nret match
-                {
-                  case -2 => if (ret == -1) -2 else ret
-                  case -1 => ret
-                  case (0 | 1) =>
-                  {
-                    if ((ret >= 0) && (ret != nret))
-                    {
-                      throw new ContradictoryRuleException(Console.RED +
-                        "Error: Contradiction found in the ruleset when resolving the value of " +
-                        name + "." + Console.RESET)
-                      -2
-                    }
-                    else
-                      nret
-                  }
-                }
-              }
-              if (ret == -2) ret = 0
-            }
-            ret
-          }
-          def getName(): Char = name
-          def setRules(vlu: List[Rule]) = rules = vlu
-          def getRules() : List[Rule] = rules
-          override def toString(): String = "(Data " +
-          name + ": " + value + ")"
-        }
-
 }

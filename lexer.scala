@@ -1,7 +1,5 @@
 package lexer
 {
-  import parser.Parser
-
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
   }
@@ -10,6 +8,8 @@ package lexer
     def getTokenType() : TokenType.Value = ttype
     def getData() : String = data
   }
+
+  // Exception classes
   class LexerException(msg: String) extends RuntimeException(msg)
   class TooManyQueriesException(msg: String) extends LexerException(msg)
   class NoQueryException(msg: String) extends LexerException(msg)
@@ -17,24 +17,30 @@ package lexer
   class NoFactException(msg: String) extends LexerException(msg)
   class ParenthesesMismatchException(msg: String) extends LexerException(msg)
 
+  /**
+   * Lexer class, used for lexer operations
+   */
   class Lexer(lines: String)
   {
+    // The regex used in the lexer
     val query = "^\\s*\\?\\s*[A-Z]*\\s*$".r
     val fact = "^\\s*=\\s*[A-Z]*\\s*$".r
     val rule = "^\\s*!*\\s*\\(*\\s*!*\\s*[A-Z]\\s*\\)*\\s*(?:[+|^]\\s*\\(*\\s*!?\\s*[A-Z]\\s*\\)*\\s*)*(?:=>|<=>)\\s*!*\\s*\\(*\\s*!*\\s*[A-Z]\\s*\\)*\\s*(?:[+|^]\\s*\\(*\\s*!?\\s*[A-Z]\\s*\\)*\\s*)*$".r
     val comment = "#(?:.*)(?=\n)".r
     val emptyline = "(?<=(\n|^))(?:\\s*\n)|(?:\\s*\n)(?=$)".r
 
+
+    // Cleans the file then split the file by lines
     def split() : Array[String] =
     {
       var cleanedFile = emptyline.replaceAllIn(comment.replaceAllIn(lines, ""), "")
       cleanedFile = cleanedFile.replaceAll("([\t \r]*)", "")
-      // println(cleanedFile)
       val split = cleanedFile.split("\n")
       split
     }
 
-    def checkParentheses(line: String) =
+    // Checks if the number of parentheses is correct, if incorrect, throws a ParenthesesMismatchException
+    private def _checkParentheses(line: String) =
     {
       var count = 0
       for (c <- line)
@@ -52,12 +58,13 @@ package lexer
           throw new ParenthesesMismatchException(Console.RED + "Error: Parentheses mismatch" + Console.RESET)
     }
 
+    // The main action of the lexer, if an error is found, throws a LexerException
     def lex(split: Array[String]): List[Token] =
     {
       var list = List[Token]()
       for (ln <- split)
       {
-        checkParentheses(ln)
+        _checkParentheses(ln)
         ln match {
           case query() => list = new Token(TokenType.Query, ln)::list
           case fact() => list = new Token(TokenType.Fact, ln)::list
@@ -79,49 +86,4 @@ package lexer
       list
     }
   }
-
-  object ExpertSystem {
-    def getFile(filename: String) : String =
-    {
-      val source: (scala.io.BufferedSource) =
-        try
-        {
-          scala.io.Source.fromFile(filename)
-        }
-        catch
-        {
-          case e: java.io.FileNotFoundException =>
-          {
-            println(Console.RED + "Error: File " + filename + " not found." + Console.RESET)
-            System.exit(1)
-            null
-          }
-        }
-        val lines = try source.mkString finally source.close()
-        lines
-    }
-
-    def main(args: Array[String])
-    {
-      args.length match {
-        case 0 => println(Console.MAGENTA + "usage: scala ExpertSystem filename" + Console.RESET)
-        case _ =>
-        {
-          val lines = getFile(args(0))
-          val lexer = new Lexer(lines)
-          val list: (List[Token]) = try lexer.lex(lexer.split) catch {
-            case e: LexerException =>
-            {
-              println(e.getMessage)
-              System.exit(1)
-              null
-            }
-          }
-          val parser = new Parser(list)
-          parser.parse
-        }
-      }
-    }
-  }
-
 }
