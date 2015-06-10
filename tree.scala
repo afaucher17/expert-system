@@ -13,61 +13,66 @@ package tree
     rhs: LogicTree,
     ruletype: RuleType.Value,
     line: String,
-    var visited: Boolean)
+    var visitors: List[Data])
     {
       def getLeftValue(): Int = lhs.getValue()
       def getLine(): String = line
-      def getValue(data: Data): Int =
+
+      private def _solver(data: Data, lvalue: Int, ret1: Int, ret2: Int): Int =
       {
-        var res = -1
-        if (!visited)
+        val test1: Int = lvalue + lvalue
+        val test2: Int = (lvalue ^ 1) + (lvalue ^ 1)
+        val res = (ret1 + ret2) match
         {
-          visited = true
-          val lvalue: Int = getLeftValue()
-          if (((lvalue == 1) && (ruletype == RuleType.Implication)) ||
-            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
+          case (`test1`) => -1
+          case (`test2`) =>
           {
-            data.setVisited(true)
-            val base = data.getInitialValue()
-            data.setInitialValue(0)
-            var ret1 = try rhs.getValue() catch
-            {
-              case e: ContradictoryRuleException => ()
-              lvalue ^ 1
-            }
-            ret1 = if (ret1 == -1) lvalue else ret1
-            data.setInitialValue(1)
-            var ret2 = try rhs.getValue() catch
-            {
-              case e: ContradictoryRuleException => ()
-              lvalue ^ 1
-            }
-            data.setInitialValue(base)
-            data.setVisited(false)
-            ret2 = if (ret2 == -1) lvalue else ret2
-            val test1: Int = lvalue + lvalue
-            val test2: Int = (lvalue ^ 1) + (lvalue ^ 1)
-            // println("rule: " + line + " looking for " + data.getName() + " " + ret1 + " and " + ret2)
-            res = (ret1 + ret2) match
-            {
-              case (`test1`) => -1
-              case (`test2`) =>
-              {
-                visited = false
-                throw new ContradictoryRuleException(Console.RED +
-                "Error: Rule " + Console.RESET + "< " + line + " >" +
-                Console.RED + " is contradictory" + Console.RESET)
-              }
-              case 1 => if (ret1 == lvalue) 0 else 1
-            }
+            visitors = visitors.filter(x => x.getName() != data.getName())
+            throw new ContradictoryRuleException(Console.RED +
+              "Error: Rule " + Console.RESET + "< " + line + " >" +
+              Console.RED + " is contradictory" + Console.RESET)
           }
-          visited = false
+          case 1 => if (ret1 == lvalue) 0 else 1
         }
         res
       }
+
+      private def _testVariable(data: Data, lvalue: Int): Int =
+      {
+        data.setVisited(true)
+        val base = data.getInitialValue()
+        data.setInitialValue(0)
+        var ret1 = try rhs.getValue() catch { case e: ContradictoryRuleException => lvalue ^ 1}
+        ret1 = if (ret1 == -1) lvalue else ret1
+        data.setInitialValue(1)
+        var ret2 = try rhs.getValue() catch { case e: ContradictoryRuleException => lvalue ^ 1 }
+        data.setInitialValue(base)
+        data.setVisited(false)
+        ret2 = if (ret2 == -1) lvalue else ret2
+        val res = _solver(data, lvalue, ret1, ret2)
+        res
+      }
+
+      def getValue(data: Data): Int =
+      {
+        var res = -1
+        if (visitors.filter(x => x.getName() == data.getName()).isEmpty)
+        {
+          visitors = data::visitors
+          res = -2
+          lazy val lvalue: Int = getLeftValue()
+          if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
+            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
+              res = _testVariable(data, lvalue)
+          visitors = visitors.filter(x => x.getName() != data.getName())
+        }
+        res
+      }
+
       def getDataList(): List[Data] = rhs.getDataList()
       override def toString(): String = Console.YELLOW + "(Rule (" + line +
       ") : " + lhs + " " + rhs + ")" + Console.RESET
+
     }
 
     trait LogicTree {
@@ -135,10 +140,11 @@ package tree
                 val nret = rule.getValue(this)
                 ret = nret match
                 {
+                  case -2 => if (ret == -1) -2 else ret
                   case -1 => ret
                   case (0 | 1) =>
                   {
-                    if ((ret != -1) && (ret != nret))
+                    if ((ret >= 0) && (ret != nret))
                     {
                       throw new ContradictoryRuleException(Console.RED +
                         "Error: Contradiction found in the ruleset when resolving the value of " +
@@ -146,10 +152,11 @@ package tree
                       -2
                     }
                     else
-                     nret
+                      nret
                   }
                 }
               }
+              if (ret == -2) ret = 0
             }
             ret
           }
