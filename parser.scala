@@ -19,7 +19,7 @@ package parser
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
 
-    // Operators functions for the rule tree
+    // Operator functions for the rule tree
     val operators: Map[Char, (Int, Int) => Int] =
       Map('+' -> {(A: Int, B: Int)
       => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A & B)},
@@ -34,7 +34,7 @@ package parser
     var rules = List[Rule]()
     var datalist = List[Data]()
 
-    // Remove the parentheses if they are encapsulating the whole expression
+    // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
       if (parentheses.findFirstIn(line).isEmpty)
@@ -117,7 +117,6 @@ package parser
     {
       for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
       {
-        // println(Console.CYAN + l.getData + Console.RESET)
         val m = imply.findFirstMatchIn(l.getData)
         val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication   else RuleType.IfAndOnlyIf
         val rule = new Rule(_createTree(m.map(_.group(1)).getOrElse("")),

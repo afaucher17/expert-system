@@ -3,6 +3,7 @@ package lexer
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
   }
+
   class Token(val ttype: TokenType.Value, val data: String)
   {
     def getTokenType() : TokenType.Value = ttype
@@ -30,7 +31,7 @@ package lexer
     val emptyline = "(?<=(\n|^))(?:\\s*\n)|(?:\\s*\n)(?=$)".r
 
 
-    // Cleans the file then split the file by lines
+    // Cleans the file then splits the file into lines
     def split() : Array[String] =
     {
       var cleanedFile = emptyline.replaceAllIn(comment.replaceAllIn(lines, ""), "")

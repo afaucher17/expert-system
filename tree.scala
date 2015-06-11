@@ -10,7 +10,11 @@ package tree
   }
 
   /**
-   * The class Rule describe a rule in the file. Lhs is the antecedent and rhs is the consequent. The ruletype defines the type of the rule (Implication or IfAndOnlyIf). The line is the rule in string form. Visitors prevents the program from looping infinitely by allowing a data to check its rule only once.
+   * The class Rule describe a rule in the file.
+   * Lhs is the antecedent and rhs is the consequent.
+   * The ruletype defines the type of the rule (Implication or IfAndOnlyIf).
+   * The line is the rule in string form.
+   * Visitors prevents the program from looping infinitely by allowing a data to check its rule only once.
    **/
   class Rule(
     lhs: LogicTree,
@@ -58,17 +62,17 @@ package tree
         // Saving the initial value to prevent data loss
         val base = data.getInitialValue()
         data.setInitialValue(0)
-        // If an exception if thrown while checking the value of the consequent
+        // If an exception is thrown while checking the value of the consequent
         // it is not an error, but we have to assume ret1 is not the value
         // we are expecting (lvalue) but its contrary (lvalue ^ 1)
         var ret1 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
-        lvalue ^ 1}
+        lvalue ^ 1 }
         ret1 = if (ret1 == -1) lvalue else ret1
         data.setInitialValue(1)
         var ret2 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
         lvalue ^ 1 }
         data.setInitialValue(base)
-        // The hypothesis done, we set the visited boolean at false.
+        // The hypothesis done, we set the visited boolean to false.
         data.setVisited(false)
         ret2 = if (ret2 == -1) lvalue else ret2
         val res = _solver(data, lvalue, ret1, ret2)
