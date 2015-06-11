@@ -27,14 +27,23 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      if (parentheses.findFirstIn(line).isEmpty)
-        line
-      else
+      var i: Int = 0
+      var par: Int = 0
+      for (c <- line)
       {
-        val ret =
-          parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
-        _trimParentheses(ret)
+        c match {
+          case '(' => par += 1
+          case ')' =>
+          {
+            par -= 1
+            if (par == 0 && i != (line.length - 1)) return line
+          }
+          case _ => if (i == 0) return line
+        }
+        i += 1
       }
+      val res = line.slice(1, line.length - 1)
+      _trimParentheses(res)
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
@@ -154,7 +163,7 @@ package expertSystem
               {
                 case e: ContradictoryRuleException =>
                 {
-                  println(e.getMessage)
+                  System.err.println(e.getMessage)
                   System.exit(1)
                 }
               }

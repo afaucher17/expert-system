@@ -16,7 +16,7 @@ package expertSystem
         {
           case e: java.io.FileNotFoundException =>
           {
-            println(Console.RED + "Error: File " + filename + " not found." + Console.RESET)
+            System.err.println(Console.RED + "Error: File " + filename + " not found." + Console.RESET)
             System.exit(1)
             null
           }
@@ -37,7 +37,7 @@ package expertSystem
           val list: (List[Token]) = try lexer.lex(lexer.split) catch {
             case e: LexerException =>
             {
-              println(e.getMessage)
+              System.err.println(e.getMessage)
               System.exit(1)
               null
             }
