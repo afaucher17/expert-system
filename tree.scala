@@ -1,7 +1,5 @@
-package tree
+package expertSystem
 {
-  import data.Data
-
   class ContradictoryRuleException(msg: String) extends RuntimeException(msg)
 
   object RuleType extends Enumeration {

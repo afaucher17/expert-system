@@ -1,7 +1,5 @@
-package data
+package expertSystem
 {
-  import tree.Rule
-  import tree.ContradictoryRuleException
 
   /**
    * The Data class represents a data.
