@@ -1,15 +1,9 @@
 package expertSystem
 {
-  import lexer.Lexer
-  import parser.Parser
-  import lexer.Token
-  import lexer.TokenType
-  import lexer.LexerException
-
   /**
    * The main class of the program
    */
-  object ExpertSystem {
+  object Main {
     // Get the content of the file, throw a FileNotFoundException if the file is not found.
     private def _getFile(filename: String) : String =
     {
@@ -35,7 +29,7 @@ package expertSystem
     def main(args: Array[String])
     {
       args.length match {
-        case 0 => println(Console.MAGENTA + "usage: scala ExpertSystem filename" + Console.RESET)
+        case 0 => println(Console.MAGENTA + "usage: scala expertSystem.Main filename" + Console.RESET)
         case _ =>
         {
           val lines = _getFile(args(0))

@@ -1,15 +1,5 @@
-package parser
+package expertSystem
 {
-  import tree.Rule
-  import tree.Node
-  import tree.Leaf
-  import tree.RuleType
-  import tree.LogicTree
-  import tree.ContradictoryRuleException
-  import data.Data
-  import lexer.Token
-  import lexer.TokenType
-
   /**
    * Parser class, used for parsing operations
    **/

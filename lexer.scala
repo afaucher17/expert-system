@@ -1,4 +1,4 @@
-package lexer
+package expertSystem
 {
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
