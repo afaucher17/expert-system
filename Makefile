@@ -6,10 +6,11 @@
 #    By: afaucher <afaucher@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2015/06/11 15:29:28 by afaucher          #+#    #+#              #
-#    Updated: 2015/06/11 16:51:14 by afaucher         ###   ########.fr        #
+#    Updated: 2015/07/15 17:29:41 by afaucher         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
+RM = /bin/rm
 SRC = src
 SOURCES = data.scala \
 		  expertSystem.scala \
@@ -35,7 +36,7 @@ $(NAME):
 
 clean:
 	@echo "$(WARN_COLOR)"
-	rm -rf expertSystem
+	$(RM) -rf expertSystem
 	@echo "$(NO_COLOR)"
 
 fclean: clean
