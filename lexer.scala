@@ -6,7 +6,6 @@ package expertSystem
     val Query, Fact, Rule = Value
   }
 
-
   class Token(val ttype: TokenType.Value, val data: String)
   {
     def getTokenType() : TokenType.Value = ttype
