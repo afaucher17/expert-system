@@ -6,7 +6,6 @@ package expertSystem
   class Parser(list: List[Token])
   {
     // The regex used in the parser
-    val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
 
     // Operator functions for the rule tree
@@ -27,23 +26,15 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      var i: Int = 0
-      var par: Int = 0
-      for (c <- line)
-      {
-        c match {
-          case '(' => par += 1
-          case ')' =>
-          {
-            par -= 1
-            if (par == 0 && i != (line.length - 1)) return line
-          }
-          case _ => if (i == 0) return line
+      val f = { (par: Int, i: Int) =>
+        if (i >= line.length) false else
+        line.charAt(i) match {
+          case '(' => f(par + 1, i + 1)
+          case ')' => if (par == 0 && i != (line.length - 1)) true else f(par - 1, i + 1)
+          case _ => if (i == 0) true else f(par, i + 1)
         }
-        i += 1
       }
-      val res = line.slice(1, line.length - 1)
-      _trimParentheses(res)
+      if (f(0, 0)) line else _trimParentheses(line.slice(1, line.length - 1))
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
@@ -51,18 +42,14 @@ package expertSystem
     {
       pos(1) match {
         case '!' =>
-        {
           new Node(null, _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
             operators(pos(1).asInstanceOf[Char]))
-        }
         case ('+' | '|' | '^') =>
-        {
           new Node(_createTree(line.slice(0, pos(0))),
             _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
             operators(pos(1).asInstanceOf[Char]))
-        }
         case '?' =>
         {
           val li = datalist.filter(x => x.getName() == line(0))
@@ -78,28 +65,25 @@ package expertSystem
       }
     }
 
-    private def _createTree(oline: String) : LogicTree =
+    private def _createTree(oline: Option[String]) : LogicTree =
     {
-      var pos: Array[Int] = Array(-1, '?')
-      var i = 0
-      var ignore = 0
-
-      val line = _trimParentheses(oline)
-      for (c <- line)
-      {
-        c match {
-          case '(' => ignore += 1
-            case ')' => ignore -= 1
-          case ('+' | '|' | '^' | '!') =>
-          {
-            if (ignore == 0 && _checkPriority(c, pos(1).asInstanceOf[Char]))
-              pos = Array(i, c)
-          }
-          case _ => ""
-        }
-        i += 1
+      val line = oline match {
+        case Some(str) => _trimParentheses(str)
+        case None => throw RuntimeException("unknown error")
       }
-      _addLogicTree(pos, line)
+      val f = { (i: Int, ignore: Int, pos: Tuple2) =>
+        if (i >= line.length) pos else
+        line.charAt(i) match
+        {
+          case '(' => f(i + 1, ignore + 1, pos)
+          case ')' => f(i + 1, ignore - 1, pos)
+          case ('+' | '|' | '^' | '!') => if (ignore == 0 && _checkPriority(c, pos._2))
+                                            f(i + 1, ignore, (i, c))
+                                          else f(i + 1, ignore, pos)
+          case _ => f(i + 1, ignore, pos)
+        }
+      }
+      _addLogicTree(f(0, 0, (-1, '?')), line)
     }
 
     // Checks the priority of the operators in order to create the tree in the right order.
@@ -114,20 +98,40 @@ package expertSystem
     // Splits the rules and creates a Rule instance for each of them
     private def _splitRule()
     {
-      for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
-      {
-        val m = imply.findFirstMatchIn(l.getData)
-        val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication   else RuleType.IfAndOnlyIf
-        val rule = new Rule(_createTree(m.map(_.group(1)).getOrElse("")),
-          _createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, Nil)
-        rules = rule::rules
+      val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
+      val f = { (acc: List[Rule], t: Token) =>
+        val m = imply.findFirstMatchIn(t.getData)
+        val rule = new Rule(_createTree(m.map(_.group(1))),
+          _createTree(m.map(_.group(3))),
+          if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication
+          else RuleType.IfAndOnlyIf,
+          l.getData, Nil)
+        rule::acc
       }
-      for (rule <- rules)
-      {
-        val dl = rule.getDataList().groupBy(_.getName).map(_._2.head)
-        for (data <- dl)
-          data.setRules(rule::data.getRules())
+      val rules = list.foldLeft(new Rule[List]())(f)
+      val g = { (current: List[Rule]) =>
+        val setData = { (dl: List[Data], rule: Rule)
+          dl match
+          {
+            case hd::tl =>
+            {
+              hd.setRules(rule::data.getRules())
+              setData(tl, rule)
+            }
+            case Nil => ()
+          }
+        }
+        current match
+        {
+          case hd::tl =>
+          {
+            setData(hd.getDataList().groupBy(_.getName).map(_._2.head), hd)
+            g(tl)
+          }
+          case _ => ()
+        }
       }
+      g(rules)
     }
 
     // Prints the value of the queried variable
