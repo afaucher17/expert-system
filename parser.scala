@@ -9,7 +9,7 @@ package expertSystem
     val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
 
-    // Operators functions for the rule tree
+    // Operator functions for the rule tree
     val operators: Map[Char, (Int, Int) => Int] =
       Map('+' -> {(A: Int, B: Int)
       => if (A * B == -1 || (A == -1 && B == -1)) -1 else (A & B)},
@@ -24,17 +24,26 @@ package expertSystem
     var rules = List[Rule]()
     var datalist = List[Data]()
 
-    // Remove the parentheses if they are encapsulating the whole expression
+    // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      if (parentheses.findFirstIn(line).isEmpty)
-        line
-      else
+      var i: Int = 0
+      var par: Int = 0
+      for (c <- line)
       {
-        val ret =
-          parentheses.findFirstMatchIn(line).map(_.group(2)).getOrElse("")
-        _trimParentheses(ret)
+        c match {
+          case '(' => par += 1
+          case ')' =>
+          {
+            par -= 1
+            if (par == 0 && i != (line.length - 1)) return line
+          }
+          case _ => if (i == 0) return line
+        }
+        i += 1
       }
+      val res = line.slice(1, line.length - 1)
+      _trimParentheses(res)
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
@@ -107,7 +116,6 @@ package expertSystem
     {
       for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
       {
-        // println(Console.CYAN + l.getData + Console.RESET)
         val m = imply.findFirstMatchIn(l.getData)
         val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication   else RuleType.IfAndOnlyIf
         val rule = new Rule(_createTree(m.map(_.group(1)).getOrElse("")),
@@ -155,7 +163,7 @@ package expertSystem
               {
                 case e: ContradictoryRuleException =>
                 {
-                  println(e.getMessage)
+                  System.err.println(e.getMessage)
                   System.exit(1)
                 }
               }
