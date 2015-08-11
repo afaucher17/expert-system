@@ -1,49 +1,35 @@
 package expertSystem
 {
+  import scala.io.Source
+  import java.io.FileNotFoundException
+  import scala.util.{Try, Success, Failure}
+
   /**
    * The main class of the program
    */
-  object Main {
-    // Get the content of the file, throw a FileNotFoundException if the file is not found.
-    private def _getFile(filename: String) : String =
+  object Main
+  {
+    private def _tryFile(filename: String) : Try[scala.io.Source] = Try(scala.io.Source.fromFile(filename))
+
+    private def _getLines(filename: String) : Try[String] =
     {
-      val source: (scala.io.BufferedSource) =
-        try
+      Try(_tryFile(filename) match {
+        case Failure(e) =>
         {
-          scala.io.Source.fromFile(filename)
+          System.err.println(Console.RED + e.getMessage() + Console.RESET)
+          throw new FileNotFoundException("Error")
         }
-        catch
-        {
-          case e: java.io.FileNotFoundException =>
-          {
-            println(Console.RED + "Error: File " + filename + " not found." + Console.RESET)
-            System.exit(1)
-            null
-          }
-        }
-        val lines = try source.mkString finally source.close()
-        lines
+        case Success(source) => source.mkString
+      })
     }
 
-    // main function
     def main(args: Array[String])
     {
       args.length match {
         case 0 => println(Console.MAGENTA + "usage: scala expertSystem.Main filename" + Console.RESET)
-        case _ =>
-        {
-          val lines = _getFile(args(0))
-          val lexer = new Lexer(lines)
-          val list: (List[Token]) = try lexer.lex(lexer.split) catch {
-            case e: LexerException =>
-            {
-              println(e.getMessage)
-              System.exit(1)
-              null
-            }
-          }
-          val parser = new Parser(list)
-          parser.parse
+        case _ => Try(new Lexer(_getLines(args(0)))) match {
+          case Success(lexer) => println(lexer.getResult())
+          case Failure(e) => System.err.println(e.getMessage())
         }
       }
     }
