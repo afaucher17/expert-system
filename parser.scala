@@ -25,7 +25,7 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      val f = { (par: Int, i: Int) =>
+      val f = (par: Int, i: Int) =>
         if (i >= line.length) false else
         line.charAt(i) match {
           case '(' => f(par + 1, i + 1)
@@ -98,38 +98,40 @@ package expertSystem
     private def _splitRule(datalist: Data[List]): List[Rule] =
     {
       val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
-      val f = { (acc: List[Rule], t: Token) =>
-        val m = imply.findFirstMatchIn(t.getData)
-        val rule = new Rule(_createTree(m.map(_.group(1))),
-          _createTree(m.map(_.group(3))),
-          if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication
-          else RuleType.IfAndOnlyIf,
-          l.getData, Nil)
-        rule::acc
-      }
+      val f = (acc: List[Rule], t: Token) =>
+              imply.findFirstMatchIn(t.getData) match
+              {
+                case Some(m) =>
+                {
+                  val ruletype = if (m.group(2) == "=>") RuleType.Implication
+                    else RuleType.IfAndOnlyIf
+                  val rule = new Rule(_createTree(m.group(1)),
+                    _createTree(m.group(3)), ruletype, t.getData, Nil)
+                  rule::acc
+                }
+                case None => acc
+              }
       val rules = list.foldLeft(new Rule[List]())(f)
-      val g = { (current: List[Rule]) =>
-        val setData = { (dl: List[Data], rule: Rule)
+      val g = (current: List[Rule]) =>
+      {
+        val setData = (dl: List[Data], rule: Rule) =>
           dl match
           {
-            case hd::tl =>
-            {
-              hd.setRules(rule::data.getRules())
-              setData(tl, rule)
+            case hd::tl => {
+                hd.setRules(rule::data.getRules())
+                setData(tl, rule)
             }
             case Nil => ()
           }
-        }
+      }
         current match
         {
-          case hd::tl =>
-          {
+          case hd::tl => {
             setData(hd.getDataList().groupBy(_.getName).map(_._2.head), hd)
             g(tl)
           }
-          case _ => ()
+          case Nil => ()
         }
-      }
       g(rules)
     }
 
@@ -181,18 +183,16 @@ package expertSystem
     {
       val fact =
         list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
-      val check = { (c: Char, datalist: List[Data]) =>
+      val check = (c: Char, datalist: List[Data]) =>
         if (!datalist.exists(x => x.getName() == c))
           new Data(1, c, false)::datalist
         else datalist
-      }
-      val loop = { (chars: List[Char], datalist: List[Data]) => {
+      val loop = (chars: List[Char], datalist: List[Data]) => {
         chars match {
           case Nil => datalist
           case c :: tail => { c match {
                   case ('=' | ' ' | '\t' | '\n' | '\r') => loop(tail, datalist)
                   case _ => loop(tail, check(c, datalist))
-              }
             }
           }
         }
