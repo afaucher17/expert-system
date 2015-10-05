@@ -21,7 +21,6 @@ package expertSystem
 
     // The rule list and the data list
     var rules = List[Rule]()
-    var datalist = List[Data]()
 
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
@@ -38,7 +37,7 @@ package expertSystem
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
-    private def _addLogicTree(pos: Array[Int], line: String) : LogicTree =
+    private def _addLogicTree(pos: Array[Int], line: String, datalist: List[Data]) : LogicTree =
     {
       pos(1) match {
         case '!' =>
@@ -96,7 +95,7 @@ package expertSystem
     }
 
     // Splits the rules and creates a Rule instance for each of them
-    private def _splitRule()
+    private def _splitRule(datalist: Data[List]): List[Rule] =
     {
       val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
       val f = { (acc: List[Rule], t: Token) =>
@@ -178,30 +177,33 @@ package expertSystem
     }
 
     // Split the facts to get the initial value of each variable
-    private def _splitFact()
+    private def _splitFact() : List[Data] =
     {
       val fact =
         list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
-
-      for (ln <- fact)
-      {
-        ln match {
-          case ('=' | ' ' | '\t' | '\n' | '\r') => ""
-          case _ => {
-            if (!datalist.exists(x => x.getName() == ln))
-            {
-              val data = new Data(1, ln, false)
-              datalist = data::datalist
+      val check = { (c: Char, datalist: List[Data]) =>
+        if (!datalist.exists(x => x.getName() == c))
+          new Data(1, c, false)::datalist
+        else datalist
+      }
+      val loop = { (chars: List[Char], datalist: List[Data]) => {
+        chars match {
+          case Nil  => datalist
+          case c :: tail => { c match {
+                  case ('=' | ' ' | '\t' | '\n' | '\r') => loop(tail, datalist)
+                  case _ => loop(tail, check(c, datalist))
+              }
             }
           }
         }
       }
+      loop(fact, List[Data]())
     }
 
     // The main parser action
     def parse()
     {
-      _splitFact()
+      val datalist = _splitFact()
       _splitRule()
       _splitQuery()
     }

@@ -1,10 +1,7 @@
 package expertSystem
 {
-<<<<<<< HEAD
   import parser.Parser
-=======
   import scala.util.{Try, Success, Failure}
->>>>>>> 7e590973fd91dc463eaf4c6267ecb661d7dda190
 
   object TokenType extends Enumeration {
     val Query, Fact, Rule = Value
@@ -95,13 +92,9 @@ package expertSystem
         case Failure(e) => throw e
       }
     }
-<<<<<<< HEAD
-=======
-
     private def _lex(split: List[String]): List[Token] = _checkListValidity(Try(split.map(str =>
       { _checkParentheses(str)
         _stringToToken(str)
       })))
->>>>>>> 7e590973fd91dc463eaf4c6267ecb661d7dda190
   }
 }
