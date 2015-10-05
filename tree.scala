@@ -1,5 +1,7 @@
 package expertSystem
 {
+  import scala.util.{Try, Success, Failure}
+
   class ContradictoryRuleException(msg: String) extends RuntimeException(msg)
 
   object RuleType extends Enumeration {
@@ -52,7 +54,7 @@ package expertSystem
        * Tests each possible value for the current variable (0 or 1) and checks
        * the resulting value of the consequent.
        **/
-      private def _testVariable(data: Data, lvalue: Int): Int =
+     /* private def _testVariable(data: Data, lvalue: Int): Int =
       {
         // We set the visited boolean at true to prevent the data from checking itself
         // while we make an hypothesis.
@@ -75,6 +77,31 @@ package expertSystem
         ret2 = if (ret2 == -1) lvalue else ret2
         val res = _solver(data, lvalue, ret1, ret2)
         res
+      }*/
+
+      /* Tom tests */
+      private def _testVariable(data: Data, lvalue: Int): Int =
+      {
+        data.setVisited(true)
+        val base = data.getInitialValue()
+        data.setInitialValue(0)
+
+        val ret1 = Try(rhs.getValue()) match {
+          case Failure(e) => { lvalue ^ 1 }
+          case Success(v) => if (v == -1) lvalue else v
+        }
+
+        data.setInitialValue(1)
+
+        val ret2 = Try(rhs.getValue()) match {
+          case Failure(e) => { lvalue ^ 1 }
+          case Success(v) => if (v == -1) lvalue else v
+        }
+
+        data.setInitialValue(base)
+        data.setVisited(false)
+        val res = _solver(data, lvalue, ret1, ret2)
+        res
       }
 
       /**
@@ -90,11 +117,28 @@ package expertSystem
           lazy val lvalue: Int = getLeftValue()
           if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
             ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
-          res = _testVariable(data, lvalue)
+            res = _testVariable(data, lvalue)
           visitors = visitors.filter(x => x.getName() != data.getName())
         }
         res
       }
+
+      /* Tom tests
+      def getValue(data: Data): Int =
+      {
+        var res = -1
+        if (visitors.filter(x => x.getName() == data.getName()).isEmpty)
+        {
+          visitors = data::visitors
+          res = -2
+          lazy val lvalue: Int = getLeftValue()
+          if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
+            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
+            res = _testVariable(data, lvalue)
+          visitors = visitors.filter(x => x.getName() != data.getName())
+        }
+        res
+      }*/
 
       def getDataList(): List[Data] = rhs.getDataList()
       override def toString(): String = Console.YELLOW + "(Rule (" + line +
@@ -122,25 +166,30 @@ package expertSystem
           }
           value
         }
+
         def getDataList(): List[Data] =
         {
-          if (lhs == null)
-            rhs.getDataList()
-          else
-            lhs.getDataList():::rhs.getDataList()
+          val value = lhs match
+          {
+            case null => rhs.getDataList()
+            case _ => lhs.getDataList():::rhs.getDataList()
+          }
+          value
         }
+
         override def toString(): String = Console.BLUE + "(Tree " +
         Console.RED + opname + Console.BLUE +
         ": " + lhs + " % " + rhs + ")" + Console.RESET
       }
 
-      class Leaf(data: Data) extends LogicTree
-      {
-        def getValue(): Int =
-          data.getValue()
-        def getDataList(): List[Data] = data::Nil
-        override def toString(): String = Console.GREEN + "(Leaf " +
+    class Leaf(data: Data) extends LogicTree
+    {
+      def getValue(): Int = data.getValue()
+
+      def getDataList(): List[Data] = data::Nil
+
+      override def toString(): String = Console.GREEN + "(Leaf " +
         Console.CYAN + data.getName() + Console.GREEN +
         ": " + data.getValue() + ")" + Console.RESET
-      }
+    }
 }
