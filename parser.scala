@@ -188,7 +188,7 @@ package expertSystem
       }
       val loop = { (chars: List[Char], datalist: List[Data]) => {
         chars match {
-          case Nil  => datalist
+          case Nil => datalist
           case c :: tail => { c match {
                   case ('=' | ' ' | '\t' | '\n' | '\r') => loop(tail, datalist)
                   case _ => loop(tail, check(c, datalist))
