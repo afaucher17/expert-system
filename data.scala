@@ -21,17 +21,15 @@ package expertSystem
        **/
       def _checkRules(ret: Int): Int =
       {
-        var current = ret
-        for (rule <- rules)
+        val evalCurrent = (acc: Int, rule: Rule) =>
         {
-          val nret = rule.getValue(this)
-          current = nret match
+          val v = rule.getValue(this)
+          v match
           {
-            case -2 => if (current == -1) -2 else ret
-            case -1 => current
+            case -2 => if (acc == -1) -2 else ret
+            case -1 => acc
             case (0 | 1) =>
-            {
-              if ((current >= 0) && (current != nret))
+              if ((acc >= 0) && (acc != v))
               {
                 throw new ContradictoryRuleException(Console.RED +
                   "Error: Contradiction found in the ruleset when resolving the value of " +
@@ -39,12 +37,16 @@ package expertSystem
                 -2
               }
               else
-                nret
-            }
+                v
           }
         }
-        if (current == -2) current = 0
-        current
+
+        val current = rules.foldLeft(ret)(evalCurrent)
+
+        if (current == -2)
+          0
+        else
+          current
       }
 
       /**
@@ -52,13 +54,12 @@ package expertSystem
        **/
       def getValue(): Int =
       {
-        var ret : Int = value
-
-        if ((ret == -1) && (rules.isEmpty))
-          ret = 0
+        if ((value == -1) && (rules.isEmpty))
+          0
         else if (!visited)
-          ret = _checkRules(ret)
-        ret
+          _checkRules(value)
+        else
+          value
       }
       def getName(): Char = name
       def setRules(vlu: List[Rule]) = rules = vlu

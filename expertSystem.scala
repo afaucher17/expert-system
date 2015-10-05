@@ -27,9 +27,14 @@ package expertSystem
     {
       args.length match {
         case 0 => println(Console.MAGENTA + "usage: scala expertSystem.Main filename" + Console.RESET)
-        case _ => Try(new Lexer(_getLines(args(0)))) match {
-          case Success(lexer) => println(lexer.getResult())
+        case _ => Try(new Lexer(_getLines(args(0)))) match
+        {
           case Failure(e) => System.err.println(e.getMessage())
+          case Success(lexer) => Try ((new Parser(lexer.getResult())).parse()) match
+          {
+              case Failure(e) => System.err.println(e.getMessage())
+              case _ => ()
+          }
         }
       }
     }

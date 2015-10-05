@@ -54,32 +54,6 @@ package expertSystem
        * Tests each possible value for the current variable (0 or 1) and checks
        * the resulting value of the consequent.
        **/
-     /* private def _testVariable(data: Data, lvalue: Int): Int =
-      {
-        // We set the visited boolean at true to prevent the data from checking itself
-        // while we make an hypothesis.
-        data.setVisited(true)
-        // Saving the initial value to prevent data loss
-        val base = data.getInitialValue()
-        data.setInitialValue(0)
-        // If an exception is thrown while checking the value of the consequent
-        // it is not an error, but we have to assume ret1 is not the value
-        // we are expecting (lvalue) but its contrary (lvalue ^ 1)
-        var ret1 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
-        lvalue ^ 1 }
-        ret1 = if (ret1 == -1) lvalue else ret1
-        data.setInitialValue(1)
-        var ret2 = try rhs.getValue() catch { case e: ContradictoryRuleException =>
-        lvalue ^ 1 }
-        data.setInitialValue(base)
-        // The hypothesis done, we set the visited boolean to false.
-        data.setVisited(false)
-        ret2 = if (ret2 == -1) lvalue else ret2
-        val res = _solver(data, lvalue, ret1, ret2)
-        res
-      }*/
-
-      /* Tom tests */
       private def _testVariable(data: Data, lvalue: Int): Int =
       {
         data.setVisited(true)
@@ -108,42 +82,31 @@ package expertSystem
        * Get the value of a given data according to the rule.
        **/
       def getValue(data: Data): Int =
-      {
-        var res = -1
         if (visitors.filter(x => x.getName() == data.getName()).isEmpty)
         {
           visitors = data::visitors
-          res = -2
-          lazy val lvalue: Int = getLeftValue()
-          if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
-            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
-            res = _testVariable(data, lvalue)
-          visitors = visitors.filter(x => x.getName() != data.getName())
-        }
-        res
-      }
 
-      /* Tom tests
-      def getValue(data: Data): Int =
-      {
-        var res = -1
-        if (visitors.filter(x => x.getName() == data.getName()).isEmpty)
-        {
-          visitors = data::visitors
-          res = -2
           lazy val lvalue: Int = getLeftValue()
-          if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
-            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
-            res = _testVariable(data, lvalue)
-          visitors = visitors.filter(x => x.getName() != data.getName())
+
+          if (((ruletype == RuleType.Implication) && (lvalue != 1)) ||
+            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue == -1)))
+          {
+            visitors = visitors.filter(x => x.getName() != data.getName())
+            -2
+          }
+          else
+          {
+            val res = _testVariable(data, lvalue)
+            visitors = visitors.filter(x => x.getName() != data.getName())
+            res
+          }
         }
-        res
-      }*/
+        else
+          -1
 
       def getDataList(): List[Data] = rhs.getDataList()
       override def toString(): String = Console.YELLOW + "(Rule (" + line +
       ") : " + lhs + " " + rhs + ")" + Console.RESET
-
     }
 
     trait LogicTree {
@@ -152,30 +115,24 @@ package expertSystem
     }
 
     class Node(
-      lhs: LogicTree,
+      lhs: Option[LogicTree],
       rhs: LogicTree,
       opname: Char,
       op: (Int, Int) => Int) extends LogicTree
       {
         def getValue(): Int =
-        {
-          val value = lhs match
+          lhs match
           {
-            case null => op(1, rhs.getValue())
-            case _ => op(lhs.getValue(), rhs.getValue())
+            case None => op(1, rhs.getValue()) //TODO verifier la valeur magique '1'
+            case Some(v) => op(v.getValue(), rhs.getValue())
           }
-          value
-        }
 
         def getDataList(): List[Data] =
-        {
-          val value = lhs match
+          lhs match
           {
-            case null => rhs.getDataList()
-            case _ => lhs.getDataList():::rhs.getDataList()
+            case None => rhs.getDataList()
+            case Some(v) => v.getDataList():::rhs.getDataList()
           }
-          value
-        }
 
         override def toString(): String = Console.BLUE + "(Tree " +
         Console.RED + opname + Console.BLUE +
