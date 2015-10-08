@@ -1,12 +1,12 @@
 package expertSystem
 {
+  import scala.util.{Try, Success, Failure}
   /**
    * Parser class, used for parsing operations
    **/
   class Parser(list: List[Token])
   {
     // The regex used in the parser
-    val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
     val parentheses = "^(\\()(.*)(\\))$".r
 
     // Operator functions for the rule tree
@@ -27,79 +27,65 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      var i: Int = 0
-      var par: Int = 0
-      for (c <- line)
-      {
-        c match {
-          case '(' => par += 1
-          case ')' =>
-          {
-            par -= 1
-            if (par == 0 && i != (line.length - 1)) return line
+      def f(par: Int, i: Int): Boolean =
+        if (i >= line.length) false
+        else
+        {
+          line.charAt(i) match {
+            case '(' => f(par + 1, i + 1)
+            case ')' => if (par == 0 && i != (line.length - 1)) true else f(par - 1, i + 1)
+            case _ => if (i == 0) true else f(par, i + 1)
           }
-          case _ => if (i == 0) return line
         }
-        i += 1
-      }
-      val res = line.slice(1, line.length - 1)
-      _trimParentheses(res)
+      if (f(0, 0)) line else _trimParentheses(line.slice(1, line.length - 1))
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
-    private def _addLogicTree(pos: Array[Int], line: String) : LogicTree =
+    private def _addLogicTree(pos: Array[Int], line: String) : (LogicTree) =
     {
       pos(1) match {
         case '!' =>
-        {
-          new Node(null, _createTree(line.slice(pos(0) + 1, line.length)),
+          (new Node(None, _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
-            operators(pos(1).asInstanceOf[Char]))
-        }
+            operators(pos(1).asInstanceOf[Char])), datalist)
         case ('+' | '|' | '^') =>
-        {
-          new Node(_createTree(line.slice(0, pos(0))),
+          (new Node(Some(_createTree(line.slice(0, pos(0)))),
             _createTree(line.slice(pos(0) + 1, line.length)),
             pos(1).asInstanceOf[Char],
-            operators(pos(1).asInstanceOf[Char]))
-        }
+            operators(pos(1).asInstanceOf[Char])), datalist)
         case '?' =>
         {
           val li = datalist.filter(x => x.getName() == line(0))
-          val data = if (li.isEmpty)
+          if (li.isEmpty)
           {
             val data = new Data(-1, line(0), false)
             datalist = data::datalist
-            data
+            new Leaf(data)
           }
-          else li(0)
-          new Leaf(data)
+          else new Leaf(li(0))
         }
       }
     }
 
-    private def _createTree(oline: String) : LogicTree =
+    private def _createTree(oline: Option[String]) : LogicTree =
     {
-      var pos: Array[Int] = Array(-1, '?')
-      var i = 0
-      var ignore = 0
-
-      val line = _trimParentheses(oline)
-      for (c <- line)
-      {
-        c match {
-          case '(' => ignore += 1
-            case ')' => ignore -= 1
-          case ('+' | '|' | '^' | '!') =>
-          {
-            if (ignore == 0 && _checkPriority(c, pos(1).asInstanceOf[Char]))
-              pos = Array(i, c)
-          }
-          case _ => ""
-        }
-        i += 1
+      val line = oline match {
+        case Some(str) => _trimParentheses(str)
+        case None => throw RuntimeException("unknown error")
       }
-      _addLogicTree(pos, line)
+      val f = { (i: Int, ignore: Int, pos: Tuple2) =>
+        if (i >= line.length) pos else
+        line.charAt(i) match
+        {
+          case '(' => f(i + 1, ignore + 1, pos)
+          case ')' => f(i + 1, ignore - 1, pos)
+          case ('+' | '|' | '^' | '!') => if (ignore == 0 && _checkPriority(c, pos._2))
+                                            f(i + 1, ignore, (i, c))
+                                          else f(i + 1, ignore, pos)
+          case _ => f(i + 1, ignore, pos)
+        }
+      }
+      _addLogicTree(f(0, 0, (-1, '?')), line)
     }
 
     // Checks the priority of the operators in order to create the tree in the right order.
@@ -112,86 +98,96 @@ package expertSystem
     }
 
     // Splits the rules and creates a Rule instance for each of them
-    private def _splitRule()
+    private def _splitRule(datalist: Data[List]): (List[Rule], List[Data]) =
     {
-      for (l <- list.filter(x => x.getTokenType() == TokenType.Rule))
+      val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
+      val f = (acc: (List[Rule], List[Data]), t: Token) =>
+              imply.findFirstMatchIn(t.getData) match
+              {
+                case Some(m) =>
+                {
+                  val ruletype = if (m.group(2) == "=>") RuleType.Implication
+                    else RuleType.IfAndOnlyIf
+                  val rule = new Rule(_createTree(m.group(1)), _createTree(m.group(3)), ruletype, t.getData, Nil)
+                  rule :: acc
+                }
+                case None => acc
+              }
+      rules = list.foldLeft(list.filter(x => x.getTokenType() == TokenType.Rule))(f)
+      val setDataLoop = (current: List[Rule]) =>
       {
-        val m = imply.findFirstMatchIn(l.getData)
-        val ruletype = if (m.map(_.group(2)).getOrElse("") == "=>") RuleType.Implication   else RuleType.IfAndOnlyIf
-        val rule = new Rule(_createTree(m.map(_.group(1)).getOrElse("")),
-          _createTree(m.map(_.group(3)).getOrElse("")), ruletype, l.getData, Nil)
-        rules = rule::rules
+        val setData = (dl: List[Data], rule: Rule) => dl match
+          {
+            case data::tl => {
+                data.setRules(rule::data.getRules())
+                setData(tl, rule)
+            }
+            case Nil => ()
+          }
+        current match
+        {
+          case rule::tl => {
+            setData(rule.getDataList().groupBy(_.getName).map(_._2.head), rule)
+            setDataLoop(tl)
+          }
+          case Nil => ()
+        }
       }
-      for (rule <- rules)
-      {
-        val dl = rule.getDataList().groupBy(_.getName).map(_._2.head)
-        for (data <- dl)
-          data.setRules(rule::data.getRules())
-      }
+      setDataLoop(rules)
     }
 
     // Prints the value of the queried variable
-    private def _printValue(value: Int, name: Char)
-    {
-      println(Console.GREEN + "Value " + name + ": " + (value match
+    private def _printValue(value: Int, name: Char) : Unit = println(Console.GREEN + "Value " + name + ": " + (value match
       {
         case 0 => "False"
         case 1 => "True"
         case -1 => "Undetermined"
       }) + "." + Console.RESET)
-    }
 
     // Split the query to get the value of each variable
     private def _splitQuery()
     {
       val qry =
         list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
-
-      for (c <- qry)
-      {
-        c match {
-          case ('?' | ' ' | '\t' | '\n' | '\r') => ""
-          case _ =>
+      val loop = (chars: List[Char]) =>
+        chars match {
+          case Nil => ()
+          case c :: tail =>
           {
-            if (!datalist.exists(x => x.getName() == c))
-              _printValue(0, c)
-            else
+            c match
             {
-              try
-              _printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
-              catch
+              case ('?' | ' ' | '\t' | '\n' | '\r') => ()
+              case _ =>
               {
-                case e: ContradictoryRuleException =>
-                {
-                  System.err.println(e.getMessage)
-                  System.exit(1)
-                }
+                if (!datalist.exists(x => x.getName() == c)) _printValue(0, c)
+                else _printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
+                loop (tail)
               }
             }
           }
         }
-      }
     }
 
     // Split the facts to get the initial value of each variable
-    private def _splitFact()
+    private def _splitFact() : List[Data] =
     {
       val fact =
         list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
-
-      for (ln <- fact)
-      {
-        ln match {
-          case ('=' | ' ' | '\t' | '\n' | '\r') => ""
-          case _ => {
-            if (!datalist.exists(x => x.getName() == ln))
-            {
-              val data = new Data(1, ln, false)
-              datalist = data::datalist
+      val check = (c: Char, dtlst: List[Data]) =>
+        if (!dtlst.exists(x => x.getName() == c))
+          new Data(1, c, false)::dtlst
+        else dtlst
+      val loop = (chars: List[Char], dtlst: List[Data]) => {
+        chars match {
+          case Nil => dtlst
+          case c :: tail => { c match {
+                  case ('=' | ' ' | '\t' | '\n' | '\r') => loop(tail, dtlst)
+                  case _ => loop(tail, check(c, dtlst))
             }
           }
         }
       }
+      datalist = loop(fact, datalist)
     }
 
     // The main parser action
