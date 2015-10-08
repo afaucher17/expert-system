@@ -41,18 +41,16 @@ package expertSystem
     }
 
     // Creates a LogicTree (either a Node or a Leaf)
-    private def _addLogicTree(pos: Array[Int], line: String) : (LogicTree) =
+    private def _addLogicTree(pos: (Int, Char), line: String) : (LogicTree) =
     {
-      pos(1) match {
+      pos._1 match {
         case '!' =>
-          (new Node(None, _createTree(line.slice(pos(0) + 1, line.length)),
-            pos(1).asInstanceOf[Char],
-            operators(pos(1).asInstanceOf[Char])), datalist)
+          (new Node(None, _createTree(line.slice(pos._1 + 1, line.length)),
+            pos._2, operators(pos._2)))
         case ('+' | '|' | '^') =>
-          (new Node(Some(_createTree(line.slice(0, pos(0)))),
-            _createTree(line.slice(pos(0) + 1, line.length)),
-            pos(1).asInstanceOf[Char],
-            operators(pos(1).asInstanceOf[Char])), datalist)
+          (new Node(Some(_createTree(line.slice(0, pos._1))),
+            _createTree(line.slice(pos._1 + 1, line.length)),
+            pos._2, operators(pos._2)))
         case '?' =>
         {
           val li = datalist.filter(x => x.getName() == line(0))
@@ -67,25 +65,26 @@ package expertSystem
       }
     }
 
-    private def _createTree(oline: Option[String]) : LogicTree =
+    private def _createTree(line: String) : LogicTree =
     {
-      val line = oline match {
-        case Some(str) => _trimParentheses(str)
-        case None => throw RuntimeException("unknown error")
-      }
-      val f = { (i: Int, ignore: Int, pos: Tuple2) =>
-        if (i >= line.length) pos else
-        line.charAt(i) match
+      def findDelimitor(i: Int, ignore: Int, pos: (Int, Char)) : (Int, Char) =
+      {
+        if (i >= line.length) pos
+        else
         {
-          case '(' => f(i + 1, ignore + 1, pos)
-          case ')' => f(i + 1, ignore - 1, pos)
-          case ('+' | '|' | '^' | '!') => if (ignore == 0 && _checkPriority(c, pos._2))
-                                            f(i + 1, ignore, (i, c))
-                                          else f(i + 1, ignore, pos)
-          case _ => f(i + 1, ignore, pos)
+          val c = line.charAt(i)
+          c match
+          {
+            case '(' => findDelimitor(i + 1, ignore + 1, pos)
+            case ')' => findDelimitor(i + 1, ignore - 1, pos)
+            case ('+' | '|' | '^' | '!') => if (ignore == 0 && _checkPriority(c, pos._2))
+                                              findDelimitor(i + 1, ignore, (i, c))
+                                            else findDelimitor(i + 1, ignore, pos)
+            case _ => findDelimitor(i + 1, ignore, pos)
+          }
         }
       }
-      _addLogicTree(f(0, 0, (-1, '?')), line)
+      _addLogicTree(findDelimitor(0, 0, (-1, '?')), line)
     }
 
     // Checks the priority of the operators in order to create the tree in the right order.
@@ -98,10 +97,10 @@ package expertSystem
     }
 
     // Splits the rules and creates a Rule instance for each of them
-    private def _splitRule(datalist: Data[List]): (List[Rule], List[Data]) =
+    private def _splitRule()  =
     {
       val imply = "([^<=>]+)(=>|<=>)([^<=>]+)".r
-      val f = (acc: (List[Rule], List[Data]), t: Token) =>
+      val f = (acc: List[Rule], t: Token) =>
               imply.findFirstMatchIn(t.getData) match
               {
                 case Some(m) =>
@@ -109,14 +108,16 @@ package expertSystem
                   val ruletype = if (m.group(2) == "=>") RuleType.Implication
                     else RuleType.IfAndOnlyIf
                   val rule = new Rule(_createTree(m.group(1)), _createTree(m.group(3)), ruletype, t.getData, Nil)
-                  rule :: acc
+                  rule::acc
                 }
                 case None => acc
               }
-      rules = list.foldLeft(list.filter(x => x.getTokenType() == TokenType.Rule))(f)
-      val setDataLoop = (current: List[Rule]) =>
+      rules = (list.filter(x => x.getTokenType() == TokenType.Rule)).foldLeft(List[Rule]())(f)
+      def setDataLoop(current: List[Rule]): Unit =
       {
-        val setData = (dl: List[Data], rule: Rule) => dl match
+        def setData(dl: Iterable[Data], rule: Rule): Unit =
+        {
+          dl match
           {
             case data::tl => {
                 data.setRules(rule::data.getRules())
@@ -124,6 +125,7 @@ package expertSystem
             }
             case Nil => ()
           }
+        }
         current match
         {
           case rule::tl => {
@@ -149,7 +151,8 @@ package expertSystem
     {
       val qry =
         list.filter(x => x.getTokenType() == TokenType.Query)(0).getData()
-      val loop = (chars: List[Char]) =>
+      def solver(chars: List[Char]): Unit =
+      {
         chars match {
           case Nil => ()
           case c :: tail =>
@@ -161,33 +164,34 @@ package expertSystem
               {
                 if (!datalist.exists(x => x.getName() == c)) _printValue(0, c)
                 else _printValue(datalist.filter(x => x.getName() == c)(0).getValue(), c)
-                loop (tail)
+                solver(tail)
               }
             }
           }
         }
+      }
+      solver(qry.toList)
     }
 
     // Split the facts to get the initial value of each variable
-    private def _splitFact() : List[Data] =
+    private def _splitFact() =
     {
       val fact =
         list.filter(x => x.getTokenType() == TokenType.Fact)(0).getData()
-      val check = (c: Char, dtlst: List[Data]) =>
+      def check(c: Char, dtlst: List[Data]): List[Data] =
         if (!dtlst.exists(x => x.getName() == c))
           new Data(1, c, false)::dtlst
         else dtlst
-      val loop = (chars: List[Char], dtlst: List[Data]) => {
+      def explodeFacts(chars: List[Char], dtlst: List[Data]): List[Data] =
         chars match {
           case Nil => dtlst
           case c :: tail => { c match {
-                  case ('=' | ' ' | '\t' | '\n' | '\r') => loop(tail, dtlst)
-                  case _ => loop(tail, check(c, dtlst))
+                  case ('=' | ' ' | '\t' | '\n' | '\r') => explodeFacts(tail, dtlst)
+                  case _ => explodeFacts(tail, check(c, dtlst))
             }
           }
         }
-      }
-      datalist = loop(fact, datalist)
+      datalist = explodeFacts(fact.toList, datalist)
     }
 
     // The main parser action
