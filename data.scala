@@ -26,7 +26,7 @@ package expertSystem
           val v = rule.getValue(this)
           v match
           {
-            case -2 => if (acc == -1) -2 else ret
+            case -2 => if (acc == -1) -2 else acc
             case -1 => acc
             case (0 | 1) =>
               if ((acc >= 0) && (acc != v))
