@@ -27,7 +27,6 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
-      println(line)
       def f(par: Int, i: Int): Boolean =
         if (i >= line.length) false
         else

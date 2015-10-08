@@ -21,7 +21,7 @@ package expertSystem
     rhs: LogicTree,
     ruletype: RuleType.Value,
     line: String,
-    var visitors: List[Data])
+    var visitors: List[(Char, Int)])
     {
       def getLeftValue(): Int = lhs.getValue()
       def getLine(): String = line
@@ -40,7 +40,7 @@ package expertSystem
           case (`test1`) => -1
           case (`test2`) =>
           {
-            visitors = visitors.filter(x => x.getName() != data.getName())
+            removeVisitor(data)
             throw new ContradictoryRuleException(Console.RED +
               "Error: Rule " + Console.RESET + "< " + line + " >" +
               Console.RED + " is contradictory" + Console.RESET)
@@ -79,30 +79,54 @@ package expertSystem
       }
 
       /**
+       * Add the given data to the visitors list
+       **/
+      def addVisitor(data: Data) =
+      {
+          if (visitors.filter(x => x._1 == data.getName()).isEmpty)
+            visitors = (data.getName(),1)::visitors
+          else
+          {
+            val save = visitors.filter(x => x._1 == data.getName()).head
+            visitors = (save._1, save._2 + 1)::visitors.filter(x => x._1 != data.getName())
+          }
+      }
+
+      def removeVisitor(data: Data) =
+      {
+        val save = visitors.filter(x => x._1 == data.getName()).head
+        if (save._2 - 1 <= 0)
+          visitors = visitors.filter(x => x._1 != data.getName())
+        else
+          visitors = (save._1, save._2 - 1)::visitors.filter(x => x._1 != data.getName())
+      }
+
+      /**
        * Get the value of a given data according to the rule.
        **/
       def getValue(data: Data): Int =
-        if (visitors.filter(x => x.getName() == data.getName()).isEmpty)
+      {
+        if (visitors.filter(x => x._1 == data.getName()).isEmpty ||
+          !(visitors.filter(x => x._1 == data.getName() && x._2 <= 8).isEmpty))
         {
-          visitors = data::visitors
-
-          lazy val lvalue: Int = getLeftValue()
-
-          if (((ruletype == RuleType.Implication) && (lvalue != 1)) ||
-            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue == -1)))
+          addVisitor(data)
+          val lvalue: Int = getLeftValue()
+          if (((ruletype == RuleType.Implication) && (lvalue == 1)) ||
+            ((ruletype == RuleType.IfAndOnlyIf) && (lvalue != -1)))
           {
-            visitors = visitors.filter(x => x.getName() != data.getName())
-            -2
+            val res = _testVariable(data, lvalue)
+            removeVisitor(data)
+            res
           }
           else
           {
-            val res = _testVariable(data, lvalue)
-            visitors = visitors.filter(x => x.getName() != data.getName())
-            res
+            removeVisitor(data)
+            -2
           }
         }
         else
           -1
+      }
 
       def getDataList(): List[Data] = rhs.getDataList()
       override def toString(): String = Console.YELLOW + "(Rule (" + line +
@@ -147,6 +171,6 @@ package expertSystem
 
       override def toString(): String = Console.GREEN + "(Leaf " +
         Console.CYAN + data.getName() + Console.GREEN +
-        ": " + data.getValue() + ")" + Console.RESET
+        ": " + data.getInitialValue() + ")" + Console.RESET
     }
 }
