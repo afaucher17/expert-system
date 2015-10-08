@@ -1,6 +1,5 @@
 package expertSystem
 {
-  import parser.Parser
   import scala.util.{Try, Success, Failure}
 
   object TokenType extends Enumeration {
