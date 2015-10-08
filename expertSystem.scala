@@ -13,14 +13,14 @@ package expertSystem
 
     private def _getLines(filename: String) : Try[String] =
     {
-      Try(_tryFile(filename) match {
+      Try(_tryFile(filename)) match {
         case Failure(e) =>
         {
           System.err.println(Console.RED + e.getMessage() + Console.RESET)
           throw new FileNotFoundException("Error")
         }
         case Success(source) => source.mkString
-      })
+      }
     }
 
     def main(args: Array[String])
