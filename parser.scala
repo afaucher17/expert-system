@@ -200,7 +200,6 @@ package expertSystem
     {
       _splitFact()
       _splitRule()
-      println(rules)
       _splitQuery()
     }
   }
