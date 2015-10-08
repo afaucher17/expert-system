@@ -27,13 +27,14 @@ package expertSystem
     // Removes the parentheses if they are encapsulating the whole expression
     private def _trimParentheses(line: String) : String =
     {
+      println(line)
       def f(par: Int, i: Int): Boolean =
         if (i >= line.length) false
         else
         {
           line.charAt(i) match {
             case '(' => f(par + 1, i + 1)
-            case ')' => if (par == 0 && i != (line.length - 1)) true else f(par - 1, i + 1)
+            case ')' => if ((par - 1) == 0 && i != (line.length - 1)) true else f(par - 1, i + 1)
             case _ => if (i == 0) true else f(par, i + 1)
           }
         }
@@ -43,7 +44,7 @@ package expertSystem
     // Creates a LogicTree (either a Node or a Leaf)
     private def _addLogicTree(pos: (Int, Char), line: String) : (LogicTree) =
     {
-      pos._1 match {
+      pos._2 match {
         case '!' =>
           (new Node(None, _createTree(line.slice(pos._1 + 1, line.length)),
             pos._2, operators(pos._2)))
@@ -65,8 +66,9 @@ package expertSystem
       }
     }
 
-    private def _createTree(line: String) : LogicTree =
+    private def _createTree(oline: String) : LogicTree =
     {
+      val line = _trimParentheses(oline)
       def findDelimitor(i: Int, ignore: Int, pos: (Int, Char)) : (Int, Char) =
       {
         if (i >= line.length) pos
@@ -139,12 +141,12 @@ package expertSystem
     }
 
     // Prints the value of the queried variable
-    private def _printValue(value: Int, name: Char) : Unit = println(Console.GREEN + "Value " + name + ": " + (value match
-      {
+    private def _printValue(value: Int, name: Char) = println(Console.GREEN + "Value " + name + ": " + (value match
+    {
         case 0 => "False"
         case 1 => "True"
         case -1 => "Undetermined"
-      }) + "." + Console.RESET)
+    }) + "." + Console.RESET)
 
     // Split the query to get the value of each variable
     private def _splitQuery()
@@ -159,7 +161,7 @@ package expertSystem
           {
             c match
             {
-              case ('?' | ' ' | '\t' | '\n' | '\r') => ()
+              case ('?' | ' ' | '\t' | '\n' | '\r') => solver(tail)
               case _ =>
               {
                 if (!datalist.exists(x => x.getName() == c)) _printValue(0, c)
@@ -199,6 +201,7 @@ package expertSystem
     {
       _splitFact()
       _splitRule()
+      println(rules)
       _splitQuery()
     }
   }
