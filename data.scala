@@ -26,8 +26,8 @@ package expertSystem
           val v = rule.getValue(this)
           v match
           {
-            case -2 => if (acc == -1) -2 else acc
-            case -1 => acc
+            case -2 => acc
+            case -1 => if (acc == -2) -1 else acc
             case (0 | 1) =>
               if ((acc >= 0) && (acc != v))
               {
@@ -54,7 +54,7 @@ package expertSystem
        **/
       def getValue(): Int =
       {
-        if ((value == -1) && (rules.isEmpty))
+        if ((value == -2) && (rules.isEmpty))
           0
         else if (!visited)
           _checkRules(value)

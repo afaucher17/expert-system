@@ -125,7 +125,7 @@ package expertSystem
           }
         }
         else
-          -1
+          -2
       }
 
       def getDataList(): List[Data] = rhs.getDataList()
@@ -147,7 +147,7 @@ package expertSystem
         def getValue(): Int =
           lhs match
           {
-            case None => op(1, rhs.getValue()) //TODO verifier la valeur magique '1'
+            case None => op(1, rhs.getValue())
             case Some(v) => op(v.getValue(), rhs.getValue())
           }
 

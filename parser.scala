@@ -56,7 +56,7 @@ package expertSystem
           val li = datalist.filter(x => x.getName() == line(0))
           if (li.isEmpty)
           {
-            val data = new Data(-1, line(0), false)
+            val data = new Data(-2, line(0), false)
             datalist = data::datalist
             new Leaf(data)
           }
