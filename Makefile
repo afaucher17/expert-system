@@ -6,17 +6,16 @@
 #    By: afaucher <afaucher@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2015/06/11 15:29:28 by afaucher          #+#    #+#              #
-#    Updated: 2015/10/08 17:19:31 by afaucher         ###   ########.fr        #
+#    Updated: 2015/10/09 15:11:32 by afaucher         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 RM = /bin/rm
-SRC = src
-SOURCES = data.scala \
-		  expertSystem.scala \
-		  lexer.scala \
-		  parser.scala \
-		  tree.scala \
+SOURCES = src/data.scala \
+		  src/expertSystem.scala \
+		  src/lexer.scala \
+		  src/parser.scala \
+		  src/tree.scala \
 
 S = scala
 SC = scalac
