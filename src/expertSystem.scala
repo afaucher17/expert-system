@@ -14,11 +14,7 @@ package expertSystem
     private def _getLines(filename: String) : Try[String] =
     {
       Try(_tryFile(filename) match {
-        case Failure(e) =>
-        {
-          System.err.println(Console.RED + e.getMessage() + Console.RESET)
-          throw new FileNotFoundException("Error")
-        }
+        case Failure(e) => throw e
         case Success(source) => source.mkString
       })
     }
@@ -29,10 +25,10 @@ package expertSystem
         case 0 => println(Console.MAGENTA + "usage: scala expertSystem.Main filename" + Console.RESET)
         case _ => Try(new Lexer(_getLines(args(0)))) match
         {
-          case Failure(e) => System.err.println(e.getMessage())
+          case Failure(e) => System.err.println(Console.RED + "Error: " + e.getMessage() + Console.RESET)
           case Success(lexer) => Try ((new Parser(lexer.getResult())).parse()) match
           {
-              case Failure(e) => System.err.println(e.getMessage())
+              case Failure(e) => System.err.println(Console.RED + "Error: " + e.getMessage() + Console.RESET)
               case _ => ()
           }
         }

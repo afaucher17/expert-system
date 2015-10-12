@@ -41,9 +41,9 @@ package expertSystem
           case (`test2`) =>
           {
             removeVisitor(data)
-            throw new ContradictoryRuleException(Console.RED +
-              "Error: Rule " + Console.RESET + "< " + line + " >" +
-              Console.RED + " is contradictory" + Console.RESET)
+            throw new ContradictoryRuleException("Error: Rule "
+              + Console.RESET + "< " + line + " >" +
+              Console.RED + " is contradictory.")
           }
           case 1 => if (ret1 == lvalue) 0 else 1
         }

@@ -31,9 +31,8 @@ package expertSystem
             case (0 | 1) =>
               if ((acc >= 0) && (acc != v))
               {
-                throw new ContradictoryRuleException(Console.RED +
-                  "Error: Contradiction found in the ruleset when resolving the value of " +
-                  name + "." + Console.RESET)
+                throw new ContradictoryRuleException("Contradiction found in the ruleset when resolving the value of "
+                  + name + ".")
                 -2
               }
               else
