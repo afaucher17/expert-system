@@ -1,0 +1,19 @@
+# this is a comment$
+# all the required rules and symbols, along with the bonus ones, will be
+# shown here. spacing is not important
+
+A => O | P
+A => (Z | (!C ^ !S)) + !S
+D ^ V => O
+A + B       => C
+E + F       => !V
+C | D       => X | V
+A ^ !B => !V
+C | !G      => A
+A | B + C => D
+A | (B + !C + (!D ^ F)) + G => Z ^ !V
+
+=ABG                    # Initial facts : A, B and G are true. All others are false.
+                        # If no facts are initially true, then a simple "=" followed
+                        # by a newline is used
+?ABCDEFGHIJKLMNOPQRSTUVWXYZ                    # Queries : What are G, V and X ?

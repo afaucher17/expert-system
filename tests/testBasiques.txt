@@ -1,0 +1,15 @@
+A => B + C
+A => D | E
+A => !(F | G)
+A => !H | H
+A <=> I + J
+A => L
+!A <=> K + L
+A => O
+O => A
+A => (!P ^ Q) + P
+A => R ^ ((S + T) | (!U))
+
+=AR
+
+?ABCDEFGHIJKLMNOPQRSTUVWXYZ

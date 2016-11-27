@@ -1,0 +1,12 @@
+# all the required rules and symbols, along with the bonus ones, will be
+# # shown here. spacing is not important
+A => !(B | C)
+D => E | F
+G => H + I
+J => K ^ L
+M => !N
+O => P
+=ADGJMO # Initial facts : A, B and G are true. All others are false.
+# # If no facts are initially true, then a simple "=" followed
+# # by a newline is used
+?ABCDEFGHIJKLMNOP # Queries : What are G, V and X ?
